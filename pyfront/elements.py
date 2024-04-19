@@ -6,7 +6,13 @@ from dataclasses import dataclass, field
 from pyfront.context import CURRENT_COMPONENT, CURRENT_PARENT_ELEMENT
 
 
-ATTR_RENAME_MAP = {"class_": "class", "dir_": "dir", "async_": "async", "type_": "type"}
+ATTR_RENAME_MAP = {
+    "class_": "class",
+    "dir_": "dir",
+    "async_": "async",
+    "type_": "type",
+    "for_": "for",
+}
 
 FIELDS_TO_EXCLUDE = ("content", "parent_element", "_children", "_self_closing")
 
@@ -555,6 +561,8 @@ class select(HTMLElement):
     name: str | None = None
     required: bool | None = None
     size: int | None = None
+    
+    onchange: str | None = "reloadComponent(this)"
 
 
 @dataclass(slots=True)
@@ -571,7 +579,7 @@ class textarea(HTMLElement):
     dirname: str | None = None
     form: str | None = None
     wrap: Literal["hard", "soft"] | None = None
-    
+
     def __post_init__(self):
         comp = CURRENT_COMPONENT.get()
         if comp:

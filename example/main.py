@@ -29,12 +29,6 @@ class Form(pf.Component):
             pf.div("RELOADED!")
             pf.div(input_text.content)
 
-        # if pf.reloaded_from(submit_btn):
-        #     pf.div("RELOADED!")
-
-        # if submit_btn.is_trigger:
-        #     pass
-
 
 class Chat(pf.Component):
     name: str
@@ -70,37 +64,6 @@ class Page(pf.Component):
             with pf.body():
                 self.content()
 
-        # with div(class_="container"):
-        #     h1(self.title)
-
-        #     with div(style="padding: 10px;"):
-        #         with div():
-        #             span(
-        #                 "Hello",
-        #                 # onclick=self.reload(),
-        #                 dataset={"key": "value"},
-        #                 title="Это очень крутой SPAN",
-        #                 # hx=HTMX(
-        #                 #     "/span-content",
-        #                 #     method="POST",
-        #                 #     swap="innerHTML",
-        #                 #     target="span",
-        #                 #     trigger="this",
-        #                 # ),
-        #             )
-
-        # with button(id="submit_btn"):
-        #     span("Submit")
-
-        # with div(style="border: 1px solid black; padding: 10px;"):
-        #     HTMX.wrap(Chat(name="TON Foundation"))
-        # # HTMX(Chat(name="Demo chat"))
-
-        # # if submit_btn.clicked:
-        # #     pass
-
-        # # if button("Cancel").clicked:
-        # #     pass
 
 
 app = FastAPI()
