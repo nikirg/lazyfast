@@ -1,58 +1,85 @@
-from typing import Any
+from asyncio import sleep
+import random
+from typing import Any, Literal
+
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
 import pyfront as pf
+
+
+GROUP_TYPE = Literal["internal", "external"]
+
+
+class User(BaseModel):
+    id: int
+    name: str
+    group: GROUP_TYPE
+
+
+async def get_user_by_group(group: GROUP_TYPE) -> list[User]:
+    await sleep(random.randint(1, 3))
+    users = [
+        User(id=1, name="John", group="external"),
+        User(id=2, name="Alice", group="internal"),
+        User(id=3, name="Anna", group="internal"),
+        User(id=4, name="Sam", group="external"),
+        User(id=5, name="Bob", group="internal"),
+        User(id=6, name="Eve", group="external"),
+        User(id=7, name="Mark", group="internal"),
+        User(id=8, name="Kate", group="internal"),
+        User(id=9, name="Tim", group="external"),
+    ]
+    return [user for user in users if user.group == group]
+
+
+class UserList(pf.Component):
+    async def view(self):
+        with pf.div(class_="field"):
+            pf.label("Select user group", class_="label", for_="group")
+
+            with pf.div(class_="control"):
+                with pf.div(
+                    class_="select", dataset={"htmx-indicator-class": "is-loading"}
+                ):
+
+                    with pf.select(id="group", name="group") as group_select:
+                        for group in ("internal", "external"):
+                            pf.option(
+                                group.capitalize(),
+                                value=group,
+                                selected=group == group_select.value,
+                            )
+
+        users = await get_user_by_group(group_select.value or "internal")
+
+        with pf.table(class_="table"):
+            with pf.thead():
+                with pf.tr():
+                    pf.th("ID")
+                    pf.th("Name")
+
+            with pf.tbody():
+                for user in users:
+                    with pf.tr():
+                        pf.td(user.id)
+                        pf.td(user.name)
 
 
 with open("example/test.js", "r") as file:
     js_script = file.read()
 
 
-class Form(pf.Component):
-    async def view(self):
-        # with pf.form():
-        #     pf.h1("Form")
-        #     pf.button("Submit", class_="button")
-        #     pf.span(id="output")
-
-        input_text = pf.textarea(class_="textarea", name="long_text")
-        service_input = pf.input(id="service", type_="text", name="service")
-
-        if input_text.content:
-            pf.h2(input_text.content)
-            input_text.content = None
-
-        submit_btn = pf.button("Reload", id="submitBtn", class_="button is-primary")
-
-        if self.reloaded_by(submit_btn):
-            pf.div("RELOADED!")
-            pf.div(input_text.content)
-
-
-class Chat(pf.Component):
-    name: str
-
-    async def view(self):
-        with pf.div(class_="container"):
-            with pf.h3():
-                pf.span(self.name)
-                pf.input(type_="hidden", name="parent")
-                pf.HTMX.wrap(Form())
-
-
 class Page(pf.Component):
     title: str
     charset: str = "UTF-8"
     lang: str = "en"
-    content: Any
 
     async def view(self):
         with pf.html(lang=self.lang):
             with pf.head():
                 pf.meta(charset=self.charset)
-                # @ TODO:
-                # meta(name="viewport", content="width=device-width, initial-scale=1.0")
                 pf.title(self.title)
                 pf.link(
                     rel="stylesheet",
@@ -62,8 +89,15 @@ class Page(pf.Component):
                 pf.script(js_script)
 
             with pf.body():
-                self.content()
+                with pf.div(class_="container mt-6"):
+                    with pf.div(class_="grid"):
+                        with pf.div(class_="cell"):
+                            with pf.div(class_="box"):
+                                pf.HTMX.wrap(UserList())
 
+                        with pf.div(class_="cell"):
+                            with pf.div(class_="box"):
+                                pass
 
 
 app = FastAPI()
@@ -73,5 +107,5 @@ pf.HTMX.configure(app)
 
 @app.get("/")
 async def root():
-    page = Page(title="Pyfront", content=Chat(name="TON Foundation"))
+    page = Page(title="Pyfront")
     return HTMLResponse(await page.html())

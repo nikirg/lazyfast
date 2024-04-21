@@ -3,8 +3,7 @@ from enum import Enum
 from typing import Any, Type, Literal, Callable
 from dataclasses import dataclass, field
 
-from pyfront.context import CURRENT_COMPONENT, CURRENT_PARENT_ELEMENT
-
+from pyfront import context
 
 ATTR_RENAME_MAP = {
     "class_": "class",
@@ -29,6 +28,7 @@ __all__ = [
     "h3",
     "h4",
     "h5",
+    "h6",
     "a",
     "table",
     "thead",
@@ -61,62 +61,59 @@ __all__ = [
     "link",
     "meta",
     "caption",
+    "dl",
+    "dt",
+    "blockquote",
+    "strong",
 ]
 
 
-class Dir(str, Enum):
-    LTR = "ltr"
-    RTL = "rtl"
-    AUTP = "auto"
+# TODO: increse _lang enumeration
 
+_lang = Literal["en", "ru", "es"]
 
-class Dropzone(str, Enum):
-    COPY = "copy"
-    MOVE = "move"
-    LINK = "link"
+_referrerpolicy = Literal[
+    "no-referrer",
+    "no-referrer-when-downgrade",
+    "same-origin",
+    "origin",
+    "origin-when-cross-origin",
+    "unsafe-url",
+]
 
+_referrerpolicy = Literal[
+    "no-referrer",
+    "no-referrer-when-downgrade",
+    "same-origin",
+    "origin",
+    "origin-when-cross-origin",
+    "unsafe-url",
+]
 
-# TODO: increse Lang enumeration
-
-
-class Lang(str, Enum):
-    EN = "en"
-    RU = "ru"
-
-
-class Translate(str, Enum):
-    YES = "yes"
-    NO = "no"
-
-
-class Target(str, Enum):
-    SELF = "_self"
-    BLANK = "_blank"
-    PARENT = "_parent"
-    TOP = "_top"
-
-
-class Crossorigin(str, Enum):
-    ANONYMOUS = "anonymous"
-    USE_CREDENTIALS = "use-credentials"
-
-
-class MediaTypes(str, Enum):
-    ALL = "all"
-    PRINT = "print"
-    SCREEN = "screen"
-    SPEECH = "speech"
-
-
-class Enctype(str, Enum):
-    APPLICATION_X_WWW_FORM_URLENCODED = "application/x-www-form-urlencoded"
-    MULTIPART_FORM_DATA = "multipart/form-data"
-    TEXT_PLAIN = "text/plain"
-
-
-class HTTPMethod(str, Enum):
-    GET = "get"
-    POST = "post"
+_input_type = Literal[
+    "button",
+    "checkbox",
+    "color",
+    "date",
+    "datetime-local",
+    "email",
+    "file",
+    "hidden",
+    "image",
+    "month",
+    "number",
+    "password",
+    "radio",
+    "range",
+    "reset",
+    "search",
+    "submit",
+    "tel",
+    "text",
+    "time",
+    "url",
+    "week",
+]
 
 
 @dataclass(slots=True)
@@ -132,14 +129,14 @@ class HTMLElement(ABC):
     accesskey: str | None = None
     contenteditable: bool | None = None
     contextmenu: str | None = None
-    dir_: Dir | None = None
+    dir_: Literal["ltr", "rtl", "auto"] | None = None
     draggable: bool | None = None
-    dropzone: Dropzone | None = None
+    dropzone: Literal["copy", "move", "link"] | None = None
     hidden: bool | None = None
-    lang: Lang | None = None
+    lang: _lang | None = None
     spellcheck: bool | None = None
     tabindex: int | None = None
-    translate: Translate | None = None
+    translate: Literal["yes", "no"] | None = None
     aria_labelledby: str | None = None
     aria_expand: str | None = None
     aria_controls: str | None = None
@@ -163,7 +160,7 @@ class HTMLElement(ABC):
 
     hx: Type["HTMX"] | None = None
 
-    # TODO: xml:lang
+    # TODO: xml:_lang
     # TODO: aria-*
     # TODO: classes to class after self.html()
     # TODO: data-* attributes
@@ -175,12 +172,12 @@ class HTMLElement(ABC):
     )
 
     def __post_init__(self):
-        if parent := CURRENT_PARENT_ELEMENT.get():
+        if parent := context.get_element():
             parent.add_child(self)
-            CURRENT_PARENT_ELEMENT.set(parent)
-        elif comp := CURRENT_COMPONENT.get():
+            context.update_element(parent)
+        elif comp := context.get_component():
             comp.add_elm(self)
-            CURRENT_COMPONENT.set(comp)
+            context.update_component(comp)
         else:
             raise RuntimeError(
                 'Elements can be created only in the "view" method of an object of the Component class'
@@ -191,15 +188,15 @@ class HTMLElement(ABC):
             raise TypeError(
                 'You cannot use "with" operator and "content" field at the same time'
             )
-        CURRENT_PARENT_ELEMENT.set(self)
+        context.set_element(self)
         return self
 
     def __exit__(self, type, value, traceback):
-        CURRENT_PARENT_ELEMENT.set(None)
+        context.reset_element()
 
     def add_child(self, elm: Type["HTMLElement"] | Type["Component"]):
         self._children.append(elm)
-
+        
     @staticmethod
     def _build_attr_str_repr(key: str, value: Any) -> str:
         attr_name = ATTR_RENAME_MAP.get(key, key)
@@ -247,10 +244,6 @@ class HTMLElement(ABC):
             return f"<{tag_name}{attrs}>{content}</{tag_name}>"
 
 
-class _Interactive:
-    id: str | None = None
-
-
 @dataclass(slots=True)
 class div(HTMLElement):
     pass
@@ -275,7 +268,7 @@ class ul(HTMLElement):
 class ol(HTMLElement):
     reversed_: bool | None = None
     start: int | None = None
-    # TODO: type attribute
+    type_: str | None = None
 
 
 @dataclass(slots=True)
@@ -382,25 +375,6 @@ class td(HTMLElement):
     headers: str | None = None
 
 
-_referrerpolicy = Literal[
-    "no-referrer",
-    "no-referrer-when-downgrade",
-    "same-origin",
-    "origin",
-    "origin-when-cross-origin",
-    "unsafe-url",
-]
-
-_referrerpolicy = Literal[
-    "no-referrer",
-    "no-referrer-when-downgrade",
-    "same-origin",
-    "origin",
-    "origin-when-cross-origin",
-    "unsafe-url",
-]
-
-
 @dataclass(slots=True)
 class script(HTMLElement):
     src: str | None = None
@@ -436,12 +410,12 @@ class meta(HTMLElement):
 
 @dataclass(slots=True)
 class html(HTMLElement):
-    lang: Lang | None = None
+    lang: _lang | None = None
 
 
 @dataclass(slots=True)
 class body(HTMLElement):
-    lang: Lang | None = None
+    lang: _lang | None = None
 
 
 @dataclass(slots=True)
@@ -479,41 +453,20 @@ class form(HTMLElement):
     accept_charset: str | None = None
     action: str | None = None
     # TODO: autocomplete attribute
-    enctype: Enctype | None = None
-    method: HTTPMethod | None = None
+    enctype: (
+        Literal[
+            "application/x-www-form-urlencoded", "multipart/form-data", "text/plain"
+        ]
+        | None
+    ) = None
+    method: Literal["get", "post"] | None = None
     name: str | None = None
     # TODO: novalidate attribute
-    target: Target | None = None
+    target: Literal["_self", "_blank", "_parent", "_top"] | None = None
 
     onreset: Callable | None = None
     onselect: Callable | None = None
     onsubmit: Callable | None = None
-
-
-_input_type = Literal[
-    "button",
-    "checkbox",
-    "color",
-    "date",
-    "datetime-local",
-    "email",
-    "file",
-    "hidden",
-    "image",
-    "month",
-    "number",
-    "password",
-    "radio",
-    "range",
-    "reset",
-    "search",
-    "submit",
-    "tel",
-    "text",
-    "time",
-    "url",
-    "week",
-]
 
 
 @dataclass(slots=True)
@@ -530,9 +483,10 @@ class input(HTMLElement):
     required: bool | None = None
     value: str | None = None
     placeholder: str | None = None
+    list: str | None = None
 
     def __post_init__(self):
-        comp = CURRENT_COMPONENT.get()
+        comp = context.get_component()
         if comp:
             self.value = comp._inputs.get(self.name)
         super(input, self).__post_init__()
@@ -561,8 +515,13 @@ class select(HTMLElement):
     name: str | None = None
     required: bool | None = None
     size: int | None = None
-    
+
     onchange: str | None = "reloadComponent(this)"
+
+    @property
+    def value(self) -> Any:
+        if comp := context.get_component():
+            return comp._inputs.get(self.name)
 
 
 @dataclass(slots=True)
@@ -581,7 +540,7 @@ class textarea(HTMLElement):
     wrap: Literal["hard", "soft"] | None = None
 
     def __post_init__(self):
-        comp = CURRENT_COMPONENT.get()
+        comp = context.get_component()
         if comp:
             self.content = comp._inputs.get(self.name)
         super(textarea, self).__post_init__()
@@ -599,3 +558,63 @@ class option(HTMLElement):
 class optgroup(HTMLElement):
     disabled: bool | None = None
     label: str | None = None
+
+
+@dataclass(slots=True)
+class i(HTMLElement):
+    pass
+
+
+@dataclass(slots=True)
+class article(HTMLElement):
+    pass
+
+
+@dataclass(slots=True)
+class img(HTMLElement):
+    src: str | None = None
+    alt: str | None = None
+    width: int | None = None
+    height: int | None = None
+    crossorigin: Literal["anonymous", "use-credentials"] | None = None
+    loading: Literal["eager", "lazy"] | None = None
+
+
+@dataclass(slots=True)
+class data(HTMLElement):
+    value: str | None = None
+
+
+@dataclass(slots=True)
+class datalist(HTMLElement):
+    pass
+
+
+@dataclass(slots=True)
+class dialog(HTMLElement):
+    open: bool | None = None
+
+
+@dataclass(slots=True)
+class dl(HTMLElement):
+    pass
+
+
+@dataclass(slots=True)
+class dt(HTMLElement):
+    pass
+
+
+@dataclass(slots=True)
+class em(HTMLElement):
+    pass
+
+
+@dataclass(slots=True)
+class blockquote(HTMLElement):
+    cite: str | None = None
+
+
+@dataclass(slots=True)
+class strong(HTMLElement):
+    pass

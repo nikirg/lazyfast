@@ -3,8 +3,8 @@ from typing import Any, Literal, Type
 from fastapi import FastAPI, Query, Request, Header
 from fastapi.responses import HTMLResponse
 
+from pyfront import context
 from pyfront.component import Component
-from pyfront.context import IS_HTMX_WRAPPER
 from pyfront.elements import div
 
 METHOD_TYPE = Literal["get", "post", "put", "delete"]
@@ -26,7 +26,7 @@ __all__ = ["HTMX"]
 class Meta(type):
     def __getattribute__(cls, name):
         if name == "wrap":
-            IS_HTMX_WRAPPER.set(True)
+            context.enable_htmx_wrapper()
         return super().__getattribute__(name)
 
 
@@ -85,7 +85,10 @@ class HTMX(metaclass=Meta):
         ):
             if "HX-Request" in request.headers:
                 inputs = dict(await request.form())
-                return await cls._components[component_name].html(inputs)
+                component = cls._components[component_name]
+                html_str = await component.html(inputs)
+                context.flush()
+                return html_str
 
     @classmethod
     def wrap(cls, component: Type[Component]):
@@ -103,4 +106,4 @@ class HTMX(metaclass=Meta):
             )
             div(class_="__componentLoader__", hx=htmx)
         finally:
-            IS_HTMX_WRAPPER.set(False)
+            context.disable_htmx_wrapper()
