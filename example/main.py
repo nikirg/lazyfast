@@ -1,13 +1,15 @@
 from asyncio import sleep
+import asyncio
 import random
-from typing import Any, Literal
+from typing import Any, Literal, Type
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import HTMLResponse, StreamingResponse
+
 from pydantic import BaseModel
 
 import pyfront as pf
-
+from pyfront.state_manager.queue import StateQueue
 
 GROUP_TYPE = Literal["internal", "external"]
 
@@ -34,25 +36,45 @@ async def get_user_by_group(group: GROUP_TYPE) -> list[User]:
     return [user for user in users if user.group == group]
 
 
-class UserList(pf.Component):
+class State(pf.State):
+    selected_user_group: GROUP_TYPE = "internal"
+    info: str | None = None
+
+
+class UserGroup(pf.Component):
+    groups: list[str] = ["internal", "external"]
+
     async def view(self):
+        dataset = {"htmx-indicator-class": "is-loading"}
+
         with pf.div(class_="field"):
             pf.label("Select user group", class_="label", for_="group")
 
             with pf.div(class_="control"):
-                with pf.div(
-                    class_="select", dataset={"htmx-indicator-class": "is-loading"}
-                ):
-
+                with pf.div(class_="select", dataset=dataset):
                     with pf.select(id="group", name="group") as group_select:
-                        for group in ("internal", "external"):
+                        for group in self.groups:
                             pf.option(
                                 group.capitalize(),
                                 value=group,
                                 selected=group == group_select.value,
                             )
 
-        users = await get_user_by_group(group_select.value or "internal")
+        # if group_select.value:
+        #     async with State() as state:
+        #         state.selected_user_group = group_select.value
+
+        # state = State(
+        #     selected_user_group=group_select.value
+        # )
+        # await state.commit()
+
+
+class UserList(pf.Component):
+    group: GROUP_TYPE = "internal"
+
+    async def view(self):
+        users = await get_user_by_group(self.group)
 
         with pf.table(class_="table"):
             with pf.thead():
@@ -67,7 +89,7 @@ class UserList(pf.Component):
                         pf.td(user.name)
 
 
-with open("example/test.js", "r") as file:
+with open("example/test.js", "r", encoding="utf-8") as file:
     js_script = file.read()
 
 
@@ -85,27 +107,55 @@ class Page(pf.Component):
                     rel="stylesheet",
                     href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css",
                 )
-                pf.script(src="https://unpkg.com/htmx.org@1.8.4")
+                pf.script(src="https://unpkg.com/htmx.org")
+                pf.script(src="https://unpkg.com/htmx.org/dist/ext/sse.js")
                 pf.script(js_script)
 
             with pf.body():
-                with pf.div(class_="container mt-6"):
-                    with pf.div(class_="grid"):
-                        with pf.div(class_="cell"):
-                            with pf.div(class_="box"):
-                                pf.HTMX.wrap(UserList())
+                with pf.div(hx=pf.HTMX(ext="sse", sse_connect="/__htmx__/stream")):
+                    with pf.div(class_="container mt-6"):
+                        with pf.div(class_="grid"):
+                            with pf.div(class_="cell"):
+                                with pf.div(class_="box"):
+                                    #pf.HTMX.wrap(UserGroup())
+                                    UserGroup()
 
-                        with pf.div(class_="cell"):
-                            with pf.div(class_="box"):
-                                pass
+                            with pf.div(class_="cell"):
+                                with pf.div(class_="box"):
+                                    #pf.HTMX.wrap(UserList())
+                                    
+                                    UserList()
 
 
 app = FastAPI()
+pf.init(app, "fake-secret")
 
-pf.HTMX.configure(app)
+
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    html = await Page(title="Pyfront").html(request)
+    return html
 
 
-@app.get("/")
-async def root():
-    page = Page(title="Pyfront")
-    return HTMLResponse(await page.html())
+queue = StateQueue()
+
+
+components = [UserList]
+
+
+@app.get("/__htmx__/stream", response_class=StreamingResponse)
+async def stream(request: Request):
+    async def event_stream():
+        sid = request.session["id"]
+        await queue.add(sid)
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                await asyncio.sleep(0.5)
+                component_id = await queue.dequeue(sid)
+                yield f"event: cid_{component_id}\ndata: <none>\n\n"
+        finally:
+            await queue.delete(sid)
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")

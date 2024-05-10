@@ -151,6 +151,18 @@ files = [
 ]
 
 [[package]]
+name = "itsdangerous"
+version = "2.2.0"
+description = "Safely pass data to untrusted environments and back."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "itsdangerous-2.2.0-py3-none-any.whl", hash = "sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef"},
+    {file = "itsdangerous-2.2.0.tar.gz", hash = "sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173"},
+]
+
+[[package]]
 name = "lazy-model"
 version = "0.2.0"
 description = ""
@@ -452,6 +464,25 @@ anyio = ">=3.4.0,<5"
 full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart", "pyyaml"]
 
 [[package]]
+name = "starlette-sessions"
+version = "0.2.0"
+description = "Adds server-side session support to your Starlette application"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "starlette_sessions-0.2.0-py3-none-any.whl", hash = "sha256:37035de21cbf886ceacc2380245b872b30332c2dc9a8ac49cf8ff873f283e22e"},
+    {file = "starlette_sessions-0.2.0.tar.gz", hash = "sha256:f8adc99abe47c51484b3a91405a0eea17d70076b6039371d9ad59d5aeb21047f"},
+]
+
+[package.dependencies]
+starlette = ">=0.27.0,<0.28.0"
+
+[package.extras]
+redis = ["redis (>=4)"]
+securecookie = ["itsdangerous (>=2,<3)"]
+
+[[package]]
 name = "toml"
 version = "0.10.2"
 description = "Python Library for Tom's Obvious, Minimal Language"
@@ -579,4 +610,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "af23d1b8a9b0482c0715f5613463b45b31276795a661df138d65900819ba69e9"
+content-hash = "5a1732b473e92af9747c82e2606302ca405a029e1a0e6efbeaccf24ba8fac9c2"

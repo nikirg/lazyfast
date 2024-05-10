@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from pyfront import context
+from pyfront.component import Component
 from pyfront.elements import div
 
 METHOD_TYPE = Literal["get", "post", "put", "delete"]
@@ -22,8 +23,18 @@ SWAP_TYPE = Literal[
 
 __all__ = ["HTMX"]
 
-class HTMX:
-    endpoint_url: str | None = None
+
+class Meta(type):
+    def __getattribute__(cls, name):
+        if name == "wrap":
+            context.enable_htmx_wrapper()
+        return super().__getattribute__(name)
+
+
+class HTMX(metaclass=Meta):
+    _components: dict[str, Type[Component]] = {}
+    _htmx_endpoint_url: str | None = None
+    state_schema = None
 
     def __init__(
         self,
@@ -71,10 +82,10 @@ class HTMX:
         
     @classmethod
     def configure(cls, app: FastAPI):
-        cls.endpoint_url = "/__htmx__/{component_id}"
+        cls._htmx_endpoint_url = "/__htmx__/{component_id}"
 
         @app.post(
-            cls.endpoint_url, include_in_schema=False, response_class=HTMLResponse
+            cls._htmx_endpoint_url, include_in_schema=True, response_class=HTMLResponse
         )
         async def _(request: Request, component_id: str):
             if "HX-Request" in request.headers:
@@ -85,3 +96,22 @@ class HTMX:
                 finally:
                     context.flush()
                     
+    @classmethod
+    def wrap(cls, component: Type[Component]):
+        try:
+            component_id = component.id or str(hash(component))
+            if component_id not in cls._components:
+                cls._components[component_id] = component
+
+            url = cls._htmx_endpoint_url.format(component_id=component_id)
+            elm_id = f"cid_{component_id}"
+
+            htmx = cls(
+                url=url,
+                method="post",
+                trigger=f"load, reload, sse:{elm_id}",
+                include="closest .__componentLoader__",
+            )
+            div(id=elm_id, class_="__componentLoader__", hx=htmx)
+        finally:
+            context.disable_htmx_wrapper()

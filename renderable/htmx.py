@@ -1,11 +1,6 @@
-from typing import Any, Literal, Type
+from typing import Any, Literal
 
-from fastapi import FastAPI, Query, Request, Header
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
-
-from pyfront import context
-from pyfront.elements import div
+__all__ = ["HTMX", "HTMX_PATH_TEMPLATE"]
 
 METHOD_TYPE = Literal["get", "post", "put", "delete"]
 
@@ -20,11 +15,12 @@ SWAP_TYPE = Literal[
     "none",
 ]
 
-__all__ = ["HTMX"]
+
+HTMX_PATH_TEMPLATE = "/__htmx__/{component_id}"
+HTMX_COMPONENT_LOADER_CLASS = "__componentLoader__"
+
 
 class HTMX:
-    endpoint_url: str | None = None
-
     def __init__(
         self,
         url: str | None = None,
@@ -38,9 +34,6 @@ class HTMX:
         ext: str | None = None,
         sse_connect: str | None = None,
     ) -> None:
-        if not self.__class__._htmx_endpoint_url:
-            raise ValueError("pf.HTMX.configure(app) must be called first")
-
         self._url = url
         self._method = method
         self._trigger = trigger
@@ -56,6 +49,10 @@ class HTMX:
         self._current_parent_element = None
 
     @property
+    def class_(self) -> str:
+        return HTMX_COMPONENT_LOADER_CLASS
+
+    @property
     def attrs(self) -> list[tuple[str, Any]]:
         return [
             (f"hx-{self._method}", self._url),
@@ -68,20 +65,12 @@ class HTMX:
             ("hx-ext", self._ext),
             ("sse-connect", self._sse_connect),
         ]
-        
-    @classmethod
-    def configure(cls, app: FastAPI):
-        cls.endpoint_url = "/__htmx__/{component_id}"
 
-        @app.post(
-            cls.endpoint_url, include_in_schema=False, response_class=HTMLResponse
-        )
-        async def _(request: Request, component_id: str):
-            if "HX-Request" in request.headers:
-                inputs = dict(await request.form())
-                component = cls._components[component_id]
-                try:
-                    return await component.html(request, inputs)
-                finally:
-                    context.flush()
-                    
+
+def build_component_loader(component_name: str) -> HTMX:
+    return HTMX(
+        url=HTMX_PATH_TEMPLATE.format(component_id=component_name),
+        method="post",
+        trigger="load, reload",
+        include=f"closest .{HTMX_COMPONENT_LOADER_CLASS}",
+    )

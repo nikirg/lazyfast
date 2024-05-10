@@ -50,6 +50,9 @@ class Page(pf.Component):
             pf.HTMX.wrap(UserList(group=))
             
 ```
+```sh
+uvicorn example.main:app --reload --timeout-graceful-shutdown 3 --host 0.0.0.0
+```
 
 ## Documentation
 For more detailed documentation, including API reference and advanced usage examples, visit Pyfront Documentation.

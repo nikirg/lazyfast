@@ -1,9 +1,9 @@
 from abc import ABC
-from enum import Enum
-from typing import Any, Type, Literal, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
+from typing import Any, Callable, Literal, Type
 
-from pyfront import context
+from renderable import context
+from renderable.htmx import HTMX
 
 ATTR_RENAME_MAP = {
     "class_": "class",
@@ -115,13 +115,15 @@ _input_type = Literal[
     "week",
 ]
 
+tag_stack = context.StackManager[Type["Tag"]]("tag_stack")
+
 
 @dataclass(slots=True)
-class HTMLElement(ABC):
+class Tag(ABC):
     content: str | None = None
 
-    class_: str | None = None
     id: str | None = None
+    class_: str | None = None
     style: str | None = None
     title: str | None = None
     role: str | None = None
@@ -162,40 +164,62 @@ class HTMLElement(ABC):
 
     # TODO: xml:_lang
     # TODO: aria-*
-    # TODO: classes to class after self.html()
-    # TODO: data-* attributes
     # TODO: itemid, itemprop, itemref, itemscope, itemtype
 
     _self_closing: bool = field(default=False, init=False)
-    _children: list[Type["HTMLElement"] | Type["Component"]] = field(
-        default_factory=list
-    )
+    _children: list[Type["Tag"]] = field(default_factory=list)
 
-    def __post_init__(self):
-        if parent := context.get_element():
-            parent.add_child(self)
-            context.update_element(parent)
-        elif comp := context.get_component():
-            comp.add_elm(self)
-            context.update_component(comp)
-        else:
-            raise RuntimeError(
-                'Elements can be created only in the "view" method of an object of the Component class'
-            )
+    def __str__(self):
+        elms = []
+        for f in fields(self):
+            if value := getattr(self, f.tag_name):
+                if f.tag_name == "_children":
+                    elms.append("_children=[" + ",\t\n".join([child.__str__() for child in value]) + "]")
+                else:
+                    elms.append(f"{f.tag_name}={value!r}")
+            
+        return f"{self.tag_name}({', '.join(elms)})"
+
+    @property
+    def tag_name(self) -> str:
+        return self.__class__.__name__.lower()
+
+    @property
+    def children(self) -> list[Type["Tag"]]:
+        return self._children
+
+    def add_child(self, tag: Type["Tag"]):
+        self._children.append(tag)
+
+    def clear_children(self):
+        self._children = []
 
     def __enter__(self):
+        if self._self_closing:
+            raise TypeError('You cannot use "with" operator in a self-closing tag')
         if self.content:
             raise TypeError(
                 'You cannot use "with" operator and "content" field at the same time'
             )
-        context.set_element(self)
+        tag_stack.append(self)
         return self
 
-    def __exit__(self, type, value, traceback):
-        context.reset_element()
+    def __exit__(self, *_):
+        tag_stack.pop_last()
 
-    def add_child(self, elm: Type["HTMLElement"] | Type["Component"]):
-        self._children.append(elm)
+    def __post_init__(self):
+        if parent_tag := tag_stack.get_last():
+            parent_tag.add_child(self)
+            tag_stack.update_last(parent_tag)
+
+        elif component := context.get_component():
+            component.add_tag(self)
+            context.set_component(component)
+
+        else:
+            raise RuntimeError(
+                "Tags can only be created within a method decorated with a @rb.Page or @rb.Component"
+            )
 
     @staticmethod
     def _build_attr_str_repr(key: str, value: Any) -> str:
@@ -225,89 +249,85 @@ class HTMLElement(ABC):
                     attrs += self._build_attr_str_repr(key, value)
         return attrs.strip()
 
-    async def _build_content(self) -> str:
-        content = ""
-        for child in self._children:
-            content += await child.html()
-        return content
+    def _build_content(self) -> str:
+        return "".join([tag.html() for tag in self._children])
 
-    async def html(self, *_: Any) -> str:
-        tag_name = self.__class__.__name__.lower()
+    def html(self) -> str:
         attrs = self._get_attrs()
         if attrs:
             attrs = " " + attrs
 
         if self._self_closing:
-            return f"<{tag_name}{attrs} />"
+            return f"<{self.tag_name}{attrs} />"
         else:
-            content = self.content or await self._build_content()
-            return f"<{tag_name}{attrs}>{content}</{tag_name}>"
+            content = self.content or self._build_content()
+            return f"<{self.tag_name}{attrs}>{content}</{self.tag_name}>"
 
 
 @dataclass(slots=True)
-class div(HTMLElement):
+class div(Tag):
     pass
 
 
 @dataclass(slots=True)
-class span(HTMLElement):
+class span(Tag):
     pass
 
 
 @dataclass(slots=True)
-class p(HTMLElement):
+class p(Tag):
     pass
 
 
 @dataclass(slots=True)
-class ul(HTMLElement):
+class ul(Tag):
     pass
 
 
 @dataclass(slots=True)
-class ol(HTMLElement):
+class ol(Tag):
     reversed_: bool | None = None
     start: int | None = None
     type_: str | None = None
 
 
 @dataclass(slots=True)
-class li(HTMLElement):
+class li(Tag):
     value: int | None = None
 
 
 @dataclass(slots=True)
-class h1(HTMLElement):
+class h1(Tag):
     pass
 
 
 @dataclass(slots=True)
-class h2(HTMLElement):
+class h2(Tag):
     pass
 
 
 @dataclass(slots=True)
-class h3(HTMLElement):
+class h3(Tag):
     pass
 
 
 @dataclass(slots=True)
-class h4(HTMLElement):
+class h4(Tag):
     pass
 
 
 @dataclass(slots=True)
-class h5(HTMLElement):
+class h5(Tag):
     pass
 
 
 @dataclass(slots=True)
-class h6(HTMLElement):
+class h6(Tag):
     pass
 
 
 @dataclass(slots=True)
-class a(HTMLElement):
+class a(Tag):
     href: str | None = None
     rel: str | None = None
     type_: str | None = None
@@ -315,52 +335,52 @@ class a(HTMLElement):
 
 
 @dataclass(slots=True)
-class caption(HTMLElement):
+class caption(Tag):
     pass
 
 
 @dataclass(slots=True)
-class colgroup(HTMLElement):
+class colgroup(Tag):
     pass
 
 
 @dataclass(slots=True)
-class col(HTMLElement):
+class col(Tag):
     pass
 
 
 @dataclass(slots=True)
-class caption(HTMLElement):
+class caption(Tag):
     pass
 
 
 @dataclass(slots=True)
-class table(HTMLElement):
+class table(Tag):
     pass
 
 
 @dataclass(slots=True)
-class thead(HTMLElement):
+class thead(Tag):
     pass
 
 
 @dataclass(slots=True)
-class tbody(HTMLElement):
+class tbody(Tag):
     pass
 
 
 @dataclass(slots=True)
-class tfoot(HTMLElement):
+class tfoot(Tag):
     pass
 
 
 @dataclass(slots=True)
-class tr(HTMLElement):
+class tr(Tag):
     pass
 
 
 @dataclass(slots=True)
-class th(HTMLElement):
+class th(Tag):
     abbr: str | None = None
     colspan: int | None = None
     rowspan: int | None = None
@@ -369,14 +389,14 @@ class th(HTMLElement):
 
 
 @dataclass(slots=True)
-class td(HTMLElement):
+class td(Tag):
     colspan: int | None = None
     rowspan: int | None = None
     headers: str | None = None
 
 
 @dataclass(slots=True)
-class script(HTMLElement):
+class script(Tag):
     src: str | None = None
     type: str | None = None
     async_: bool | None = None
@@ -390,7 +410,7 @@ class script(HTMLElement):
 
 
 @dataclass(slots=True)
-class link(HTMLElement):
+class link(Tag):
     href: str | None = None
     rel: str | None = None
     type: str | None = None
@@ -400,7 +420,9 @@ class link(HTMLElement):
 
 
 @dataclass(slots=True)
-class meta(HTMLElement):
+class meta(Tag):
+    _self_closing = True
+    
     name: str | None = None
     content: str | None = None
     charset: str | None = None
@@ -409,42 +431,42 @@ class meta(HTMLElement):
 
 
 @dataclass(slots=True)
-class html(HTMLElement):
+class html(Tag):
     lang: _lang | None = None
 
 
 @dataclass(slots=True)
-class body(HTMLElement):
+class body(Tag):
     lang: _lang | None = None
 
 
 @dataclass(slots=True)
-class head(HTMLElement):
+class head(Tag):
     pass
 
 
 @dataclass(slots=True)
-class header(HTMLElement):
+class header(Tag):
     pass
 
 
 @dataclass(slots=True)
-class footer(HTMLElement):
+class footer(Tag):
     pass
 
 
 @dataclass(slots=True)
-class title(HTMLElement):
+class title(Tag):
     pass
 
 
 @dataclass(slots=True)
-class nav(HTMLElement):
+class nav(Tag):
     pass
 
 
 @dataclass(slots=True)
-class section(HTMLElement):
+class section(Tag):
     pass
 
 
@@ -454,7 +476,7 @@ _enctype = Literal[
 
 
 @dataclass(slots=True)
-class form(HTMLElement):
+class form(Tag):
     accept_charset: str | None = None
     action: str | None = None
     # TODO: autocomplete attribute
@@ -470,7 +492,7 @@ class form(HTMLElement):
 
 
 @dataclass(slots=True)
-class input(HTMLElement):
+class input(Tag):
     _self_closing = True
 
     type_: _input_type | None = None
@@ -486,14 +508,13 @@ class input(HTMLElement):
     list: str | None = None
 
     def __post_init__(self):
-        comp = context.get_component()
-        if comp:
-            self.value = comp._inputs.get(self.name)
+        if comp := context.get_component():
+            self.value = comp.inputs.get(self.name)
         super(input, self).__post_init__()
 
 
 @dataclass(slots=True)
-class button(HTMLElement):
+class button(Tag):
     disabled: bool | None = None
     name: str | None = None
     type_: Literal["submit", "reset", "button"] | None = None
@@ -503,12 +524,12 @@ class button(HTMLElement):
 
 
 @dataclass(slots=True)
-class label(HTMLElement):
+class label(Tag):
     for_: str | None = None
 
 
 @dataclass(slots=True)
-class select(HTMLElement):
+class select(Tag):
     autofocus: bool | None = None
     disabled: bool | None = None
     multiple: bool | None = None
@@ -521,11 +542,11 @@ class select(HTMLElement):
     @property
     def value(self) -> Any:
         if comp := context.get_component():
-            return comp._inputs.get(self.name)
+            return comp.inputs.get(self.name)
 
 
 @dataclass(slots=True)
-class textarea(HTMLElement):
+class textarea(Tag):
     name: str | None = None
     placeholder: str | None = None
     required: bool | None = None
@@ -540,14 +561,13 @@ class textarea(HTMLElement):
     wrap: Literal["hard", "soft"] | None = None
 
     def __post_init__(self):
-        comp = context.get_component()
-        if comp:
-            self.content = comp._inputs.get(self.name)
+        if comp := context.get_component():
+            self.content = comp.inputs.get(self.name)
         super(textarea, self).__post_init__()
 
 
 @dataclass(slots=True)
-class option(HTMLElement):
+class option(Tag):
     disabled: bool | None = None
     label: str | None = None
     selected: bool | None = None
@@ -555,23 +575,23 @@ class option(HTMLElement):
 
 
 @dataclass(slots=True)
-class optgroup(HTMLElement):
+class optgroup(Tag):
     disabled: bool | None = None
     label: str | None = None
 
 
 @dataclass(slots=True)
-class i(HTMLElement):
+class i(Tag):
     pass
 
 
 @dataclass(slots=True)
-class article(HTMLElement):
+class article(Tag):
     pass
 
 
 @dataclass(slots=True)
-class img(HTMLElement):
+class img(Tag):
     src: str | None = None
     alt: str | None = None
     width: int | None = None
@@ -581,46 +601,46 @@ class img(HTMLElement):
 
 
 @dataclass(slots=True)
-class data(HTMLElement):
+class data(Tag):
     value: str | None = None
 
 
 @dataclass(slots=True)
-class datalist(HTMLElement):
+class datalist(Tag):
     pass
 
 
 @dataclass(slots=True)
-class dialog(HTMLElement):
+class dialog(Tag):
     open: bool | None = None
 
 
 @dataclass(slots=True)
-class dl(HTMLElement):
+class dl(Tag):
     pass
 
 
 @dataclass(slots=True)
-class dt(HTMLElement):
+class dt(Tag):
     pass
 
 
 @dataclass(slots=True)
-class em(HTMLElement):
+class em(Tag):
     pass
 
 
 @dataclass(slots=True)
-class blockquote(HTMLElement):
+class blockquote(Tag):
     cite: str | None = None
 
 
 @dataclass(slots=True)
-class strong(HTMLElement):
+class strong(Tag):
     pass
 
 
 @dataclass(slots=True)
-class canvas(HTMLElement):
+class canvas(Tag):
     width: int | None = None
     height: int | None = None

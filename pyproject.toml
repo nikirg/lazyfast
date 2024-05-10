@@ -13,6 +13,8 @@ uvicorn = "^0.24.0.post1"
 pydantic = "^2.6.4"
 beanie = "^1.25.0"
 python-multipart = "^0.0.9"
+starlette-sessions = "^0.2.0"
+itsdangerous = "^2.2.0"
 
 
 [build-system]
