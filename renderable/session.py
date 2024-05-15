@@ -20,7 +20,9 @@ class Session:
         self._session_id = session_id
         self._state = state
         self._queue = asyncio.Queue()
-        self._state.set_queue(self._queue)
+
+        if self._state:
+            self._state.set_queue(self._queue)
 
     @property
     def id(self) -> str:
@@ -34,7 +36,8 @@ class Session:
         self._state = state
 
     async def get_updated_component_id(self) -> str | None:
-        return await self._state.dequeue()
+        if self._state:
+            return await self._state.dequeue()
 
 
 class SessionStorage:
@@ -68,6 +71,7 @@ class SessionStorage:
             if session_id in SessionStorage.sessions:
                 del SessionStorage.sessions[session_id]
 
+
 # class SessionMiddleware(BaseHTTPMiddleware):
 #     async def dispatch(
 #         self, request: Request, call_next: RequestResponseEndpoint
@@ -76,7 +80,7 @@ class SessionStorage:
 #         session = await self._get_or_create_session(request, session_id)
 #         request.state.session = session
 #         response = await call_next(request)
-        
+
 #         if not session_id or session_id != session.id:
 #             response.set_cookie(
 #                 key=SESSION_COOKIE_KEY,

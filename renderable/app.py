@@ -81,6 +81,10 @@ class RenderableRouter(APIRouter):
         self._state_schema = state_schema
         self._register_sse_endpoint()
 
+    def _init_state_schema(self) -> State | None:
+        if self._state_schema:
+            return self._state_schema()
+        return None
     @staticmethod
     async def _load_inputs(request: Request):
         inputs = dict(await request.form())
@@ -104,10 +108,11 @@ class RenderableRouter(APIRouter):
         if session_id:
             session = await SessionStorage.get_session(session_id)
             if not session:
-                state = self._state_schema()
+                
+                state = self._init_state_schema()
                 session = await SessionStorage.create_session(state)
         else:
-            state = self._state_schema()
+            state = self._init_state_schema()
             session = await SessionStorage.create_session(state)
 
         request.state.session = session
