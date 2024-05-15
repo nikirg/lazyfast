@@ -68,34 +68,33 @@ class SessionStorage:
             if session_id in SessionStorage.sessions:
                 del SessionStorage.sessions[session_id]
 
-
-class SessionMiddleware(BaseHTTPMiddleware):
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
-        session_id = request.cookies.get(SESSION_COOKIE_KEY)
-        session = await self._get_or_create_session(request, session_id)
-        request.state.session = session
-        response = await call_next(request)
+# class SessionMiddleware(BaseHTTPMiddleware):
+#     async def dispatch(
+#         self, request: Request, call_next: RequestResponseEndpoint
+#     ) -> Response:
+#         session_id = request.cookies.get(SESSION_COOKIE_KEY)
+#         session = await self._get_or_create_session(request, session_id)
+#         request.state.session = session
+#         response = await call_next(request)
         
-        if not session_id or session_id != session.id:
-            response.set_cookie(
-                key=SESSION_COOKIE_KEY,
-                value=session.id,
-                httponly=True,
-                max_age=SESSION_COOKIE_MAX_AGE,
-            )
-        return response
+#         if not session_id or session_id != session.id:
+#             response.set_cookie(
+#                 key=SESSION_COOKIE_KEY,
+#                 value=session.id,
+#                 httponly=True,
+#                 max_age=SESSION_COOKIE_MAX_AGE,
+#             )
+#         return response
 
-    async def _get_or_create_session(
-        self, request: Request, session_id: str | None
-    ) -> Session:
-        if session_id:
-            session = await SessionStorage.get_session(session_id)
-            if not session:
-                state = request.app.state_schema()
-                session = await SessionStorage.create_session(state)
-        else:
-            state = request.app.state_schema()
-            session = await SessionStorage.create_session(state)
-        return session
+#     async def _get_or_create_session(
+#         self, request: Request, session_id: str | None
+#     ) -> Session:
+#         if session_id:
+#             session = await SessionStorage.get_session(session_id)
+#             if not session:
+#                 state = request.app.state_schema()
+#                 session = await SessionStorage.create_session(state)
+#         else:
+#             state = request.app.state_schema()
+#             session = await SessionStorage.create_session(state)
+#         return session

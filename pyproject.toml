@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "pyfront"
+name = "renderable"
 version = "0.1.0"
 description = ""
 authors = ["Nikita Irgashev <nik.irg@yandex.ru>"]

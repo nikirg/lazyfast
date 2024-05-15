@@ -7,15 +7,20 @@ from typing import (
     TypeVar,
 )
 from functools import wraps
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, APIRouter, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from renderable.htmx import HTMX
 from renderable import context, tag as tags
-from renderable.session import Session, SessionMiddleware, SessionStorage
+from renderable.session import (
+    SESSION_COOKIE_KEY,
+    SESSION_COOKIE_MAX_AGE,
+    Session,
+    SessionStorage,
+)
 from renderable.state import State, StateField
 
-__all__ = ["RenderableApp"]
+__all__ = ["RenderableRouter"]
 
 LOADER_CLASS = "__componentLoader__"
 LOADER_ROUTE = "/__renderable__/{}"
@@ -63,17 +68,18 @@ class Component:
         return "".join([tag.html() for tag in self._tags])
 
 
-class RenderableApp(FastAPI):
-    def __init__(self, state_schema: Type[State] | None = None, **fastapi_kwargs):
-        super().__init__(**fastapi_kwargs)
+class RenderableRouter(APIRouter):
+    def __init__(
+        self, state_schema: Type[State] | None = None, **fastapi_router_kwargs
+    ):
+        dependencies = fastapi_router_kwargs.get("dependencies", [])
+        dependencies.append(Depends(self._get_or_create_session))
+        fastapi_router_kwargs["dependencies"] = dependencies
+
+        super().__init__(**fastapi_router_kwargs)
 
         self._state_schema = state_schema
         self._register_sse_endpoint()
-        self.add_middleware(SessionMiddleware)
-
-    @property
-    def state_schema(self) -> Type[State]:
-        return self._state_schema
 
     @staticmethod
     async def _load_inputs(request: Request):
@@ -88,6 +94,33 @@ class RenderableApp(FastAPI):
             if param.default == inspect.Parameter.empty
             and param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
         ]
+
+    async def _get_or_create_session(
+        self, request: Request, response: Response
+    ) -> Session:
+        session_id = request.cookies.get(SESSION_COOKIE_KEY)
+        session = None
+
+        if session_id:
+            session = await SessionStorage.get_session(session_id)
+            if not session:
+                state = self._state_schema()
+                session = await SessionStorage.create_session(state)
+        else:
+            state = self._state_schema()
+            session = await SessionStorage.create_session(state)
+
+        request.state.session = session
+
+        if not session_id or session_id != session.id:
+            response.set_cookie(
+                key=SESSION_COOKIE_KEY,
+                value=session.id,
+                httponly=True,
+                max_age=SESSION_COOKIE_MAX_AGE,
+            )
+
+        return session
 
     def _register_sse_endpoint(self):
         async def sse_endpoint(request: Request):
@@ -183,7 +216,7 @@ class RenderableApp(FastAPI):
                 dependencies=dependencies,
                 response_class=HTMLResponse,
                 methods=["POST", "GET"],
-                include_in_schema=True,
+                include_in_schema=False,
             )
 
             positional_arg_names = self._get_arg_names(func)

@@ -1,5 +1,5 @@
 from typing import Literal
-from fastapi import Depends
+from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
 import renderable as rb
@@ -32,10 +32,10 @@ async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
     return [user for user in users if user.group == state.group]
 
 
-app = rb.RenderableApp(state_schema=State)
+router = rb.RenderableRouter(state_schema=State)
 
 
-@app.component(id="userList", reload_on=[State.group])
+@router.component(id="userList", reload_on=[State.group])
 async def UserList(users: list[User] = Depends(get_user_by_group)):
     with rb.table(class_="table"):
         with rb.thead():
@@ -50,7 +50,7 @@ async def UserList(users: list[User] = Depends(get_user_by_group)):
                     rb.td(user.name)
 
 
-@app.component()
+@router.component()
 async def UserGroup(state: State = Depends(State.load)) -> None:
     groups: list[str] = ["internal", "external"]
     dataset = {"htmx-indicator-class": "is-loading"}
@@ -82,7 +82,7 @@ def extra_head():
     )
 
 
-@app.page("/{page_id}", head=extra_head)
+@router.page("/{page_id}", head=extra_head)
 async def root():
     with rb.div(class_="container mt-6"):
         with rb.div(class_="grid"):
@@ -93,3 +93,7 @@ async def root():
             with rb.div(class_="cell"):
                 with rb.div(class_="box"):
                     UserList()
+
+
+app = FastAPI()
+app.include_router(router)

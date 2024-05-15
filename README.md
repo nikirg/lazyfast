@@ -24,20 +24,23 @@ Here's an example application to demonstrate how Renderable works:
 
 ```python
 from typing import Literal
-from fastapi import Depends
+from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
 import renderable as rb
 
 GROUP_TYPE = Literal["internal", "external"]
 
+
 class User(BaseModel):
     id: int
     name: str
     group: GROUP_TYPE
 
+
 class State(rb.State):
     group: GROUP_TYPE = "internal"
+
 
 async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
     users = [
@@ -53,9 +56,11 @@ async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
     ]
     return [user for user in users if user.group == state.group]
 
-app = rb.RenderableApp(state_schema=State)
 
-@app.component(id="userList", reload_on=[State.group])
+router = rb.RenderableRouter(state_schema=State)
+
+
+@router.component(id="userList", reload_on=[State.group])
 async def UserList(users: list[User] = Depends(get_user_by_group)):
     with rb.table(class_="table"):
         with rb.thead():
@@ -69,7 +74,8 @@ async def UserList(users: list[User] = Depends(get_user_by_group)):
                     rb.td(user.id)
                     rb.td(user.name)
 
-@app.component()
+
+@router.component()
 async def UserGroup(state: State = Depends(State.load)) -> None:
     groups: list[str] = ["internal", "external"]
     dataset = {"htmx-indicator-class": "is-loading"}
@@ -91,14 +97,17 @@ async def UserGroup(state: State = Depends(State.load)) -> None:
         async with state:
             state.group = group_select.value
 
+
 def extra_head():
+    # rb.meta(charset="UTF-8")
     rb.title("Renderable demo")
     rb.link(
         rel="stylesheet",
         href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css",
     )
 
-@app.page("/{page_id}", head=extra_head)
+
+@router.page("/{page_id}", head=extra_head)
 async def root():
     with rb.div(class_="container mt-6"):
         with rb.div(class_="grid"):
@@ -109,6 +118,10 @@ async def root():
             with rb.div(class_="cell"):
                 with rb.div(class_="box"):
                     UserList()
+
+
+app = FastAPI()
+app.include_router(router)
 
 ```
 
