@@ -1,4 +1,3 @@
-from functools import wraps
 import inspect
 from typing import (
     Callable,
@@ -7,11 +6,14 @@ from typing import (
     Type,
     TypeVar,
 )
+from functools import wraps
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from renderable.htmx import HTMX
 from renderable import context, tag as tags
+from renderable.session import Session, SessionMiddleware, SessionStorage
+from renderable.state import State, StateField
 
 __all__ = ["RenderableApp"]
 
@@ -28,6 +30,9 @@ function reloadComponent(element) {
     componentLoader.setAttribute('hx-vals', JSON.stringify({ "__tid__": element.id }));
     componentLoader.querySelectorAll('[data-htmx-indicator-class]').forEach((el) => {
         el.classList.add(el.dataset['htmxIndicatorClass']);
+    })
+    componentLoader.querySelectorAll('[data-htmx-indicator-content]').forEach((el) => {
+        el.innerHTML = el.dataset['htmxIndicatorContent'];
     })
     htmx.trigger(componentLoader, 'reload');
 
@@ -59,6 +64,53 @@ class Component:
 
 
 class RenderableApp(FastAPI):
+    def __init__(self, state_schema: Type[State] | None = None, **fastapi_kwargs):
+        super().__init__(**fastapi_kwargs)
+
+        self._state_schema = state_schema
+        self._register_sse_endpoint()
+        self.add_middleware(SessionMiddleware)
+
+    @property
+    def state_schema(self) -> Type[State]:
+        return self._state_schema
+
+    @staticmethod
+    async def _load_inputs(request: Request):
+        inputs = dict(await request.form())
+        context.set_inputs(inputs)
+
+    @staticmethod
+    def _get_arg_names(func: Callable) -> list[str]:
+        return [
+            name
+            for name, param in inspect.signature(func).parameters.items()
+            if param.default == inspect.Parameter.empty
+            and param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+        ]
+
+    def _register_sse_endpoint(self):
+        async def sse_endpoint(request: Request):
+            async def event_stream():
+                session: Session = request.state.session
+                sid = session.id
+
+                while True:
+                    if await request.is_disconnected():
+                        await SessionStorage.delete_session(sid)
+                        break
+                    component_id = await session.get_updated_component_id()
+                    yield f"event: {component_id}\ndata: <none>\n\n"
+
+            return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+        self.add_api_route(
+            LOADER_ROUTE.format("sse"),
+            sse_endpoint,
+            response_class=StreamingResponse,
+            include_in_schema=False,
+        )
+
     def page(
         self,
         path: str,
@@ -76,6 +128,10 @@ class RenderableApp(FastAPI):
                     if head:
                         head()
 
+                hx = HTMX(ext="sse", sse_connect=LOADER_ROUTE.format("sse"))
+                with tags.body(hx=hx):
+                    pass
+
         def decorator(func: Callable) -> None:
             self.component(
                 path=path, dependencies=dependencies, template=init_js_scripts
@@ -83,27 +139,21 @@ class RenderableApp(FastAPI):
 
         return decorator
 
-    @staticmethod
-    async def _load_inputs(request: Request):
-        inputs = dict(await request.form())
-        context.set_inputs(inputs)
-
-    @staticmethod
-    def _get_arg_names(func: Callable) -> list[str]:
-        return [
-            name
-            for name, param in inspect.signature(func).parameters.items()
-            if param.default == inspect.Parameter.empty
-            and param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
-        ]
-
     def component(
         self,
         id: str | None = None,
         path: str | None = None,
         dependencies: Sequence[Depends] | None = None,
+        reload_on: list[StateField] | None = None,
         template: Callable | None = None,
     ):
+        if reload_on:
+            if not id:
+                raise ValueError("id is required when reload_on is set")
+
+            for state_field in reload_on:
+                state_field.register_component_reload(id)
+
         if dependencies:
             dependencies.append(Depends(self._load_inputs))
         else:
@@ -156,14 +206,18 @@ class RenderableApp(FastAPI):
                         [f"{key}={value}" for key, value in query_params.items()]
                     )
                 )
-                
+
                 if url.endswith("?"):
                     url = url[:-1]
+
+                trigger = "load, reload"
+                if id:
+                    trigger += f", sse:{id}"
 
                 htmx = HTMX(
                     url=url,
                     method="post",
-                    trigger="load, reload",
+                    trigger=trigger,
                     include=f"closest .{LOADER_CLASS}",
                 )
 

@@ -1,5 +1,5 @@
 from contextvars import ContextVar
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -35,6 +35,7 @@ class StackManager(Generic[T]):
 
 _current_component = ContextVar("current_component", default=None)
 _inputs = ContextVar("inputs", default={})
+_session = ContextVar("session", default={})
 
 def set_component(component):
     _current_component.set(component)
@@ -53,3 +54,10 @@ def set_inputs(inputs):
     
 def get_inputs():
     return _inputs.get()
+
+
+def set_session(session: dict[str, Any]):
+    _session.set(session)
+    
+def get_session() -> dict[str, Any]:
+    return _session.get()

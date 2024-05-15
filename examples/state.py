@@ -1,14 +1,8 @@
-from asyncio import sleep
-import random
 from typing import Literal
-from fastapi import Cookie, Depends
+from fastapi import Depends
 from pydantic import BaseModel
 
 import renderable as rb
-
-from renderable.tag import tag_stack
-
-app = rb.RenderableApp()
 
 GROUP_TYPE = Literal["internal", "external"]
 
@@ -19,8 +13,11 @@ class User(BaseModel):
     group: GROUP_TYPE
 
 
-async def get_user_by_group(group: GROUP_TYPE = "internal") -> list[User]:
-    await sleep(random.randint(1, 3))
+class State(rb.State):
+    group: GROUP_TYPE = "internal"
+
+
+async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
     users = [
         User(id=1, name="John", group="external"),
         User(id=2, name="Alice", group="internal"),
@@ -32,19 +29,13 @@ async def get_user_by_group(group: GROUP_TYPE = "internal") -> list[User]:
         User(id=8, name="Kate", group="internal"),
         User(id=9, name="Tim", group="external"),
     ]
-    return [user for user in users if user.group == group]
+    return [user for user in users if user.group == state.group]
 
 
-
-class State(BaseModel):
-    group: GROUP_TYPE = "internal"
-
-    @classmethod
-    def load(cls) -> "State":
-        return cls(group="internal")
+app = rb.RenderableApp(state_schema=State)
 
 
-@app.component(depends_on=[State.group])
+@app.component(id="userList", reload_on=[State.group])
 async def UserList(users: list[User] = Depends(get_user_by_group)):
     with rb.table(class_="table"):
         with rb.thead():
@@ -57,8 +48,6 @@ async def UserList(users: list[User] = Depends(get_user_by_group)):
                 with rb.tr():
                     rb.td(user.id)
                     rb.td(user.name)
-
-
 
 
 @app.component()
@@ -78,10 +67,10 @@ async def UserGroup(state: State = Depends(State.load)) -> None:
                             value=group,
                             selected=group == group_select.value,
                         )
-                        
-        if group_select.value:
+
+    if group_select.value:
+        async with state:
             state.group = group_select.value
-            
 
 
 def extra_head():
@@ -104,5 +93,3 @@ async def root():
             with rb.div(class_="cell"):
                 with rb.div(class_="box"):
                     UserList()
-
-

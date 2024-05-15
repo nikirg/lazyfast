@@ -1,64 +1,134 @@
-# Pyfront
+# Renderable
 
-Pyfront is a Python library designed for building modern web interfaces using a component-based approach inspired by popular JavaScript frameworks and the declarative coding style of Streamlit. With server-side rendering powered by HTMX, Pyfront allows developers to create rich, interactive web interfaces entirely in Python.
+Renderable is a lightweight Python library designed for building modern web interfaces using a component-based approach. It enables writing page logic on the server side in Python, integrating seamlessly with FastAPI. With Renderable, interactive elements like inputs, buttons, and selects trigger component reloads that occur on the server, updating the component's state dynamically.
 
-## Features
+## Key Features
 
-- **Component-Based**: Like modern JavaScript frameworks, Pyfront utilizes a component-based architecture to make your codebase cleaner and more modular.
-- **Server-Side Rendering**: Powered by HTMX, components can be dynamically loaded and updated on the client side without needing a full page reload.
-- **FastAPI Integration**: Built to work seamlessly with FastAPI, enabling rapid development and high performance. Additionally, Pyfront leverages FastAPI's full support for asynchronous operations.
-- **Pure Python**: All front-end code is written in Python, eliminating the need to switch between languages and allowing Python developers to leverage their existing skills.
+1. **Component-Based Approach**: Build web interfaces using components that encapsulate logic, state, and presentation.
+2. **Server-Side Logic**: Handle interactions and state management on the server, reducing client-side complexity.
+3. **FastAPI Integration**: Each component or page is a FastAPI endpoint, allowing for dependency injection and other FastAPI features.
+4. **Lightweight**: The only dependencies are FastAPI for Python and HTMX for JavaScript, which can be included via CDN.
+5. **State Management**: Utilize a state manager that can trigger component reloads, ensuring a reactive user experience.
 
 ## Installation
 
-To install Pyfront, run the following command in your terminal:
+To install Renderable, use pip:
 
 ```bash
-pip install pyfront
+pip install renderable
 ```
 
 ## Quick Start
-Here's a simple example to get you started with Pyfront:
+
+Here's an example application to demonstrate how Renderable works:
 
 ```python
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from typing import Literal
+from fastapi import Depends
+from pydantic import BaseModel
 
+import renderable as rb
 
-import pyfront as pf
+GROUP_TYPE = Literal["internal", "external"]
 
-app = FastAPI()
-
-class UserList(pf.Component):
+class User(BaseModel):
+    id: int
+    name: str
     group: GROUP_TYPE
 
-    async def view(self):
-        users = get_user_by_group(self.group)
+class State(rb.State):
+    group: GROUP_TYPE = "internal"
 
-        for user in users:
-            pass
+async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
+    users = [
+        User(id=1, name="John", group="external"),
+        User(id=2, name="Alice", group="internal"),
+        User(id=3, name="Anna", group="internal"),
+        User(id=4, name="Sam", group="external"),
+        User(id=5, name="Bob", group="internal"),
+        User(id=6, name="Eve", group="external"),
+        User(id=7, name="Mark", group="internal"),
+        User(id=8, name="Kate", group="internal"),
+        User(id=9, name="Tim", group="external"),
+    ]
+    return [user for user in users if user.group == state.group]
 
-class Page(pf.Component):
-    title: str = "Pyfront example"
+app = rb.RenderableApp(state_schema=State)
 
-    async def view(self):
-        pf.h1(self.title)
+@app.component(id="userList", reload_on=[State.group])
+async def UserList(users: list[User] = Depends(get_user_by_group)):
+    with rb.table(class_="table"):
+        with rb.thead():
+            with rb.tr():
+                rb.th("ID")
+                rb.th("Name")
 
-        pf.select()
+        with rb.tbody():
+            for user in users:
+                with rb.tr():
+                    rb.td(user.id)
+                    rb.td(user.name)
 
-        with pf.table():
-            pf.HTMX.wrap(UserList(group=))
-            
+@app.component()
+async def UserGroup(state: State = Depends(State.load)) -> None:
+    groups: list[str] = ["internal", "external"]
+    dataset = {"htmx-indicator-class": "is-loading"}
+
+    with rb.div(class_="field"):
+        rb.label("Select user group", class_="label", for_="group")
+
+        with rb.div(class_="control"):
+            with rb.div(class_="select", dataset=dataset):
+                with rb.select(id="group", name="group") as group_select:
+                    for group in groups:
+                        rb.option(
+                            group.capitalize(),
+                            value=group,
+                            selected=group == group_select.value,
+                        )
+
+    if group_select.value:
+        async with state:
+            state.group = group_select.value
+
+def extra_head():
+    rb.title("Renderable demo")
+    rb.link(
+        rel="stylesheet",
+        href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css",
+    )
+
+@app.page("/{page_id}", head=extra_head)
+async def root():
+    with rb.div(class_="container mt-6"):
+        with rb.div(class_="grid"):
+            with rb.div(class_="cell"):
+                with rb.div(class_="box"):
+                    UserGroup()
+
+            with rb.div(class_="cell"):
+                with rb.div(class_="box"):
+                    UserList()
+
 ```
-```sh
-uvicorn example.main:app --reload --timeout-graceful-shutdown 3 --host 0.0.0.0
-```
+
+## Usage
+
+1. Define State: Use rb.State to manage the state of your application.
+2. Create Components: Define components with the @app.component decorator. Components can depend on functions and other components.
+3. Handle Interactions: Use form elements like rb.select, rb.input, and rb.button to capture user interactions.
+4. Manage State: Use the state manager to trigger component reloads based on state changes.
+5. Design Pages: Combine components into pages with the @app.page decorator.
 
 ## Documentation
-For more detailed documentation, including API reference and advanced usage examples, visit Pyfront Documentation.
+
+For more detailed documentation and examples, please visit the official documentation site.
 
 ## Contributing
-We welcome contributions from the community, whether it's adding new features, improving documentation, or reporting bugs. Please see our Contributing Guidelines for more details on how to contribute to Pyfront.
+
+We welcome contributions! Please see our contributing guidelines for more information.
+
 
 ## License
-Pyfront is released under the MIT License. See the LICENSE file for more details.
+
+Renderable is licensed under the MIT License.
