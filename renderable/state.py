@@ -34,6 +34,7 @@ class ModelMeta(ModelMetaclass):
 
 class State(BaseModel, metaclass=ModelMeta):
     _queue: asyncio.Queue | None = None
+    _dump: dict[str, Any] = {}
 
     @staticmethod
     async def load(request: Request) -> Self:
@@ -47,7 +48,7 @@ class State(BaseModel, metaclass=ModelMeta):
 
     def _get_changed_fields(self) -> set[str]:
         state_dict = self.model_dump(exclude_unset=True)
-        session = context.get_session()
+        session = self._dump
         session_fields = set(session.keys())
         state_fields = set(state_dict.keys())
         common_fields = session_fields.intersection(state_fields)
@@ -55,6 +56,10 @@ class State(BaseModel, metaclass=ModelMeta):
             key for key in common_fields if session[key] != state_dict[key]
         }
         new_fields = state_fields - session_fields
+
+        print(state_dict)
+        print(session)
+
         return changed_fields | new_fields
 
     async def _reload_related_components(self, fields: set[str]) -> None:
@@ -63,13 +68,13 @@ class State(BaseModel, metaclass=ModelMeta):
                 for component_id in components:
                     await self._queue.put(component_id)
 
-    async def commit(self) -> None:
+    async def _commit(self) -> None:
         changed_fields = self._get_changed_fields()
         await self._reload_related_components(changed_fields)
 
     async def __aenter__(self) -> Self:
+        self._dump = self.model_dump(exclude_unset=True)
         return self
 
     async def __aexit__(self, *_) -> None:
-        await self.commit()
-
+        await self._commit()

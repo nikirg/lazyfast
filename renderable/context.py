@@ -9,6 +9,10 @@ class StackManager(Generic[T]):
 
     def __init__(self, name: str) -> None:
         self._contex_var = ContextVar(name, default=[])
+        
+    @property
+    def stack(self) -> list[T]:
+        return self._contex_var.get()
 
     def append(self, elm: T):
         elms = self._contex_var.get()
@@ -33,20 +37,29 @@ class StackManager(Generic[T]):
         self._contex_var.set([])
 
 
-_current_component = ContextVar("current_component", default=None)
+_root_tags = ContextVar("root_tags", default=[])
 _inputs = ContextVar("inputs", default={})
 _session = ContextVar("session", default={})
 
-def set_component(component):
-    _current_component.set(component)
+def get_root_tags():
+    return _root_tags.get()
+
+def clear_root_tags():
+    _root_tags.set([])
+    
+def add_root_tag(tag):
+    _root_tags.get().append(tag)
+
+# def set_component(component):
+#     _current_component.set(component)
 
 
-def reset_component():
-    _current_component.set(None)
+# def reset_component():
+#     _current_component.set(None)
 
 
-def get_component():
-    return _current_component.get()
+# def get_component():
+#     return _current_component.get()
 
 
 def set_inputs(inputs):

@@ -1,5 +1,5 @@
 from abc import ABC
-from dataclasses import dataclass, field, fields
+from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Callable, Literal, Type
 
 from renderable import context
@@ -56,8 +56,6 @@ __all__ = [
     "head",
     "body",
     "meta",
-    # "style",
-    # "base",
     "link",
     "meta",
     "caption",
@@ -67,53 +65,7 @@ __all__ = [
     "strong",
 ]
 
-
-# TODO: increse _lang enumeration
-
 _lang = Literal["en", "ru", "es"]
-
-_referrerpolicy = Literal[
-    "no-referrer",
-    "no-referrer-when-downgrade",
-    "same-origin",
-    "origin",
-    "origin-when-cross-origin",
-    "unsafe-url",
-]
-
-_referrerpolicy = Literal[
-    "no-referrer",
-    "no-referrer-when-downgrade",
-    "same-origin",
-    "origin",
-    "origin-when-cross-origin",
-    "unsafe-url",
-]
-
-_input_type = Literal[
-    "button",
-    "checkbox",
-    "color",
-    "date",
-    "datetime-local",
-    "email",
-    "file",
-    "hidden",
-    "image",
-    "month",
-    "number",
-    "password",
-    "radio",
-    "range",
-    "reset",
-    "search",
-    "submit",
-    "tel",
-    "text",
-    "time",
-    "url",
-    "week",
-]
 
 tag_stack = context.StackManager[Type["Tag"]]("tag_stack")
 
@@ -160,25 +112,25 @@ class Tag(ABC):
     onmouseup: str | None = None
     onunload: str | None = None
 
-    hx: Type["HTMX"] | None = None
+    hx: Type[HTMX] | None = None
 
-    # TODO: xml:_lang
-    # TODO: aria-*
-    # TODO: itemid, itemprop, itemref, itemscope, itemtype
+    # TODO xml:_lang
+    # TODO aria-*
+    # TODO itemid, itemprop, itemref, itemscope, itemtype
 
     _self_closing: bool = field(default=False, init=False)
     _children: list[Type["Tag"]] = field(default_factory=list)
 
-    def __str__(self):
-        elms = []
-        for f in fields(self):
-            if value := getattr(self, f.tag_name):
-                if f.tag_name == "_children":
-                    elms.append("_children=[" + ",\t\n".join([child.__str__() for child in value]) + "]")
-                else:
-                    elms.append(f"{f.tag_name}={value!r}")
-            
-        return f"{self.tag_name}({', '.join(elms)})"
+    # def __str__(self):
+    #     non_none_dict = {
+    #         field.name: value
+    #         for field, value in asdict(self).items()
+    #         if value is not None
+    #     }
+    #     return f"{self.tag_name}({', '.join(f'{k}={v}' for k, v in non_none_dict.items())})"
+    
+    # def __repr__(self):
+    #     return str(self)
 
     @property
     def tag_name(self) -> str:
@@ -207,19 +159,18 @@ class Tag(ABC):
     def __exit__(self, *_):
         tag_stack.pop_last()
 
-    def __post_init__(self):
+    def __post_init__(self):        
         if parent_tag := tag_stack.get_last():
             parent_tag.add_child(self)
             tag_stack.update_last(parent_tag)
 
-        elif component := context.get_component():
-            component.add_tag(self)
-            context.set_component(component)
-
         else:
-            raise RuntimeError(
-                "Tags can only be created within a method decorated with a @rb.Page or @rb.Component"
-            )
+            context.add_root_tag(self)
+
+        # else:
+        #     raise RuntimeError(
+        #         "Tags can only be created within a method decorated with a @router.page or @router.component"
+        #     )
 
     @staticmethod
     def _build_attr_str_repr(key: str, value: Any) -> str:
@@ -232,7 +183,7 @@ class Tag(ABC):
 
     def _get_attrs(self) -> str:
         attrs = ""
-        for key in self.__dataclass_fields__:
+        for key in getattr(self, "__dataclass_fields__", []):
             if key in FIELDS_TO_EXCLUDE:
                 continue
             if value := getattr(self, key):
@@ -395,6 +346,16 @@ class td(Tag):
     headers: str | None = None
 
 
+_referrerpolicy = Literal[
+    "no-referrer",
+    "no-referrer-when-downgrade",
+    "same-origin",
+    "origin",
+    "origin-when-cross-origin",
+    "unsafe-url",
+]
+
+
 @dataclass(slots=True)
 class script(Tag):
     src: str | None = None
@@ -422,7 +383,7 @@ class link(Tag):
 @dataclass(slots=True)
 class meta(Tag):
     _self_closing = True
-    
+
     name: str | None = None
     content: str | None = None
     charset: str | None = None
@@ -491,6 +452,32 @@ class form(Tag):
     onsubmit: Callable | None = None
 
 
+_input_type = Literal[
+    "button",
+    "checkbox",
+    "color",
+    "date",
+    "datetime-local",
+    "email",
+    "file",
+    "hidden",
+    "image",
+    "month",
+    "number",
+    "password",
+    "radio",
+    "range",
+    "reset",
+    "search",
+    "submit",
+    "tel",
+    "text",
+    "time",
+    "url",
+    "week",
+]
+
+
 @dataclass(slots=True)
 class input(Tag):
     _self_closing = True
@@ -508,8 +495,8 @@ class input(Tag):
     list: str | None = None
 
     def __post_init__(self):
-        if comp := context.get_component():
-            self.value = comp.inputs.get(self.name)
+        inputs = context.get_inputs()
+        self.value = inputs.get(self.name)
         super(input, self).__post_init__()
 
 
@@ -541,8 +528,8 @@ class select(Tag):
 
     @property
     def value(self) -> Any:
-        if comp := context.get_component():
-            return comp.inputs.get(self.name)
+        inputs = context.get_inputs()
+        return inputs.get(self.name)
 
 
 @dataclass(slots=True)
@@ -561,8 +548,8 @@ class textarea(Tag):
     wrap: Literal["hard", "soft"] | None = None
 
     def __post_init__(self):
-        if comp := context.get_component():
-            self.content = comp.inputs.get(self.name)
+        inputs = context.get_inputs()
+        self.content = inputs.get(self.name, self.content)
         super(textarea, self).__post_init__()
 
 

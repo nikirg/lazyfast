@@ -1,4 +1,4 @@
-from renderable.htmx import HTMX
 from renderable.app import RenderableRouter
-from renderable.tag import *
+from renderable import tags
 from renderable.state import State
+from renderable.component import Component

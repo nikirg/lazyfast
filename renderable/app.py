@@ -1,4 +1,5 @@
 import inspect
+import os
 from typing import (
     Callable,
     ParamSpec,
@@ -11,7 +12,8 @@ from fastapi import Depends, APIRouter, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from renderable.htmx import HTMX
-from renderable import context, tag as tags
+from renderable.component import Component
+from renderable import context
 from renderable.session import (
     SESSION_COOKIE_KEY,
     SESSION_COOKIE_MAX_AGE,
@@ -19,6 +21,7 @@ from renderable.session import (
     SessionStorage,
 )
 from renderable.state import State, StateField
+from renderable import tags as tags
 
 __all__ = ["RenderableRouter"]
 
@@ -32,15 +35,21 @@ JS_SCRIPT = (
     """
 function reloadComponent(element) {
     const componentLoader = element.closest('.%s');
-    componentLoader.setAttribute('hx-vals', JSON.stringify({ "__tid__": element.id }));
-    componentLoader.querySelectorAll('[data-htmx-indicator-class]').forEach((el) => {
-        el.classList.add(el.dataset['htmxIndicatorClass']);
-    })
-    componentLoader.querySelectorAll('[data-htmx-indicator-content]').forEach((el) => {
-        el.innerHTML = el.dataset['htmxIndicatorContent'];
-    })
-    htmx.trigger(componentLoader, 'reload');
+    const htmxVals = { "__tid__": element.id };
+    const cssSelector = '[data-htmx-indicator-class], [data-htmx-indicator-content]';
+    
+    componentLoader.setAttribute('hx-vals', JSON.stringify(htmxVals));
+    
+    componentLoader.querySelectorAll(cssSelector).forEach(el => {
+        if (el.dataset.htmxIndicatorClass) {
+            el.classList.add(el.dataset.htmxIndicatorClass);
+        }
+        if (el.dataset.htmxIndicatorContent) {
+            el.innerHTML = el.dataset.htmxIndicatorContent;
+        }
+    });
 
+    htmx.trigger(componentLoader, componentLoader.id);
 }
 """
     % LOADER_CLASS
@@ -49,23 +58,6 @@ function reloadComponent(element) {
 
 T = TypeVar("T")
 P = ParamSpec("P")
-
-
-class Component:
-    _tags: list[Type[tags.Tag]] = []
-
-    def __init__(self) -> None:
-        self._tags = []
-
-    @property
-    def inputs(self) -> dict[str, str]:
-        return context.get_inputs()
-
-    def add_tag(self, tag: Type[tags.Tag]):
-        self._tags.append(tag)
-
-    def html(self) -> str:
-        return "".join([tag.html() for tag in self._tags])
 
 
 class RenderableRouter(APIRouter):
@@ -85,6 +77,7 @@ class RenderableRouter(APIRouter):
         if self._state_schema:
             return self._state_schema()
         return None
+
     @staticmethod
     async def _load_inputs(request: Request):
         inputs = dict(await request.form())
@@ -108,7 +101,7 @@ class RenderableRouter(APIRouter):
         if session_id:
             session = await SessionStorage.get_session(session_id)
             if not session:
-                
+
                 state = self._init_state_schema()
                 session = await SessionStorage.create_session(state)
         else:
@@ -116,6 +109,7 @@ class RenderableRouter(APIRouter):
             session = await SessionStorage.create_session(state)
 
         request.state.session = session
+        context.set_session(session)
 
         if not session_id or session_id != session.id:
             response.set_cookie(
@@ -149,6 +143,32 @@ class RenderableRouter(APIRouter):
             include_in_schema=False,
         )
 
+    @staticmethod
+    def _replace_self(method: Callable) -> Callable:
+        async def load_component_instance(id: int) -> Type[Component] | None:
+            session = context.get_session()
+            return session.get_component(id)
+
+        sig = inspect.signature(method)
+
+        if "self" not in sig.parameters:
+            return method
+
+        params = [param for name, param in sig.parameters.items() if name != "self"]
+        self_dep_param = inspect.Parameter(
+            "self",
+            inspect.Parameter.KEYWORD_ONLY,
+            default=Depends(load_component_instance),
+        )
+        params.append(self_dep_param)
+        new_sig = sig.replace(parameters=params)
+
+        def wrapper(*args, **kwargs):
+            return method(*args, **kwargs)
+
+        wrapper.__signature__ = new_sig
+        return wrapper
+
     def page(
         self,
         path: str,
@@ -167,13 +187,18 @@ class RenderableRouter(APIRouter):
                         head()
 
                 hx = HTMX(ext="sse", sse_connect=LOADER_ROUTE.format("sse"))
-                with tags.body(hx=hx):
-                    pass
+                tags.body(hx=hx)
 
         def decorator(func: Callable) -> None:
+            class PageComponent(Component):
+                async def view(self):
+                    pass
+
+            setattr(PageComponent, "view", func)
+
             self.component(
                 path=path, dependencies=dependencies, template=init_js_scripts
-            )(func)
+            )(PageComponent)
 
         return decorator
 
@@ -181,86 +206,62 @@ class RenderableRouter(APIRouter):
         self,
         id: str | None = None,
         path: str | None = None,
+        prefix: str = "/__renderable__",
         dependencies: Sequence[Depends] | None = None,
         reload_on: list[StateField] | None = None,
         template: Callable | None = None,
     ):
-        if reload_on:
-            if not id:
-                raise ValueError("id is required when reload_on is set")
-
-            for state_field in reload_on:
-                state_field.register_component_reload(id)
-
+        deps = [Depends(self._load_inputs)]
         if dependencies:
-            dependencies.append(Depends(self._load_inputs))
-        else:
-            dependencies = [Depends(self._load_inputs)]
+            deps.extend(dependencies)
 
-        def decorator(func: Callable[P, T]) -> Callable[P, T]:
-            @wraps(func)
-            async def endpoint(*args, **kwargs) -> str:
-                current_component = Component()
-                context.set_component(current_component)
+        def decorator(component_cls):
+            if not isinstance(component_cls, type(Component)):
+                raise TypeError("Decorated class must be a subclass of Component")
+
+            view_func: Callable = getattr(component_cls, "view")
+            is_async = inspect.iscoroutinefunction(view_func)
+            view_func = self._replace_self(view_func)
+            url = os.path.join(prefix, path or component_cls.__name__)
+
+            container_id = id or self.__class__.__name__
+
+            if reload_on:
+                for state_field in reload_on:
+                    state_field.register_component_reload(id)
+
+            setattr(component_cls, "_container_id", container_id)
+            setattr(component_cls, "_url", url)
+
+            @wraps(view_func)
+            async def endpoint(*args, **kwargs):
+                context.clear_root_tags()
 
                 if template:
                     template()
 
                 try:
-                    await func(*args, **kwargs)
-                    return current_component.html()
+                    if is_async:
+                        await view_func(*args, **kwargs)
+                    else:
+                        view_func(*args, **kwargs)
+
+                    root_tags = context.get_root_tags()
+                    html = "".join(tag.html() for tag in root_tags)
+                    return html
 
                 finally:
-                    context.reset_component()
-
-            route = path or LOADER_ROUTE.format(func.__name__)
+                    context.clear_root_tags()
 
             self.add_api_route(
-                route,
+                url,
                 endpoint,
-                dependencies=dependencies,
+                dependencies=deps,
                 response_class=HTMLResponse,
-                methods=["POST", "GET"],
-                include_in_schema=False,
+                methods=["GET", "POST"],
+                include_in_schema=True,
             )
 
-            positional_arg_names = self._get_arg_names(func)
-
-            def wrapper(*args, **kwargs) -> None:
-                path_params = {}
-                query_params = dict(kwargs)
-                url = route[:]
-
-                for name, arg in zip(positional_arg_names, args):
-                    if "{" + name + "}" in route:
-                        path_params[name] = arg
-                    else:
-                        query_params[name] = arg
-
-                url = (
-                    url.format(**path_params)
-                    + "?"
-                    + "&".join(
-                        [f"{key}={value}" for key, value in query_params.items()]
-                    )
-                )
-
-                if url.endswith("?"):
-                    url = url[:-1]
-
-                trigger = "load, reload"
-                if id:
-                    trigger += f", sse:{id}"
-
-                htmx = HTMX(
-                    url=url,
-                    method="post",
-                    trigger=trigger,
-                    include=f"closest .{LOADER_CLASS}",
-                )
-
-                tags.div(id=id, class_=LOADER_CLASS, hx=htmx)
-
-            return wrapper
+            return component_cls
 
         return decorator

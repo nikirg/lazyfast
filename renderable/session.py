@@ -4,6 +4,7 @@ import uuid
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from renderable.component import Component
 from renderable.state import State
 
 
@@ -13,6 +14,7 @@ SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 
 class Session:
     _state: State | None = None
+    _components: dict[int, Type["Component"]] = {}
     _queue: asyncio.Queue
     _session_id: str | None = None
 
@@ -38,6 +40,12 @@ class Session:
     async def get_updated_component_id(self) -> str | None:
         if self._state:
             return await self._state.dequeue()
+
+    def add_component(self, component: Type["Component"]) -> None:
+        self._components[id(component)] = component
+
+    def get_component(self, component_id: int) -> Type["Component"] | None:
+        return self._components.get(component_id)
 
 
 class SessionStorage:
@@ -70,35 +78,3 @@ class SessionStorage:
         async with SessionStorage.lock:
             if session_id in SessionStorage.sessions:
                 del SessionStorage.sessions[session_id]
-
-
-# class SessionMiddleware(BaseHTTPMiddleware):
-#     async def dispatch(
-#         self, request: Request, call_next: RequestResponseEndpoint
-#     ) -> Response:
-#         session_id = request.cookies.get(SESSION_COOKIE_KEY)
-#         session = await self._get_or_create_session(request, session_id)
-#         request.state.session = session
-#         response = await call_next(request)
-
-#         if not session_id or session_id != session.id:
-#             response.set_cookie(
-#                 key=SESSION_COOKIE_KEY,
-#                 value=session.id,
-#                 httponly=True,
-#                 max_age=SESSION_COOKIE_MAX_AGE,
-#             )
-#         return response
-
-#     async def _get_or_create_session(
-#         self, request: Request, session_id: str | None
-#     ) -> Session:
-#         if session_id:
-#             session = await SessionStorage.get_session(session_id)
-#             if not session:
-#                 state = request.app.state_schema()
-#                 session = await SessionStorage.create_session(state)
-#         else:
-#             state = request.app.state_schema()
-#             session = await SessionStorage.create_session(state)
-#         return session
