@@ -35,22 +35,33 @@ JS_SCRIPT = (
     """
 function reloadComponent(element) {
     const componentLoader = element.closest('.%s');
-    const htmxVals = { "__tid__": element.id };
     const cssSelector = '[data-htmx-indicator-class], [data-htmx-indicator-content]';
+        
+    const indicatorElmClass = element.closest('[data-htmx-indicator-class]');
+    const indicatorElmContent = element.closest('[data-htmx-indicator-content]');
     
-    componentLoader.setAttribute('hx-vals', JSON.stringify(htmxVals));
-    
-    componentLoader.querySelectorAll(cssSelector).forEach(el => {
-        if (el.dataset.htmxIndicatorClass) {
-            el.classList.add(el.dataset.htmxIndicatorClass);
+    if (indicatorElmClass) {
+        if (indicatorElmClass.dataset.htmxIndicatorClass) {
+            indicatorElmClass.classList.add(indicatorElmClass.dataset.htmxIndicatorClass);
         }
-        if (el.dataset.htmxIndicatorContent) {
-            el.innerHTML = el.dataset.htmxIndicatorContent;
-        }
-    });
+    }
 
+    if (indicatorElmContent) {
+        if (indicatorElmContent.dataset.htmxIndicatorContent) {
+            indicatorElmContent.innerHTML = indicatorElmContent.dataset.htmxIndicatorContent;
+        }
+    }
+
+    const tid = document.createElement("input");
+    tid.type = "hidden";
+    tid.name = "__tid__";
+    tid.value = element.id;
+    componentLoader.appendChild(tid)
+    
     htmx.trigger(componentLoader, componentLoader.id);
 }
+
+htmx.on('htmx:sseError', function(evt){ document.location.reload(); });
 """
     % LOADER_CLASS
 )
@@ -82,15 +93,6 @@ class RenderableRouter(APIRouter):
     async def _load_inputs(request: Request):
         inputs = dict(await request.form())
         context.set_inputs(inputs)
-
-    @staticmethod
-    def _get_arg_names(func: Callable) -> list[str]:
-        return [
-            name
-            for name, param in inspect.signature(func).parameters.items()
-            if param.default == inspect.Parameter.empty
-            and param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
-        ]
 
     async def _get_or_create_session(
         self, request: Request, response: Response
@@ -132,7 +134,7 @@ class RenderableRouter(APIRouter):
                         await SessionStorage.delete_session(sid)
                         break
                     component_id = await session.get_updated_component_id()
-                    yield f"event: {component_id}\ndata: <none>\n\n"
+                    yield f"event: {component_id}\ndata: -\n\n"
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 
@@ -259,7 +261,7 @@ class RenderableRouter(APIRouter):
                 dependencies=deps,
                 response_class=HTMLResponse,
                 methods=["GET", "POST"],
-                include_in_schema=True,
+                include_in_schema=False,
             )
 
             return component_cls

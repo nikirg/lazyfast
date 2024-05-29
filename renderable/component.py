@@ -1,10 +1,12 @@
-from pydantic import BaseModel
+from typing import dataclass_transform
+from pydantic import BaseModel, Field
 
 from renderable.htmx import HTMX
 from renderable import tags
 from renderable import context
 
 
+@dataclass_transform(kw_only_default=True, field_specifiers=(Field,))
 class Component(BaseModel):
     _container_id = None
     _url = None

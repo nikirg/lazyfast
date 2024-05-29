@@ -2,7 +2,8 @@ from typing import Literal
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
-from renderable import RenderableRouter, tags, Component, State as BaseState
+from renderable import RenderableRouter, context, tags, State as BaseState
+from renderable.component import Component
 
 GROUP_TYPE = Literal["internal", "external"]
 
@@ -53,12 +54,18 @@ class UserList(Component):
 
 @router.component(id="Demo")
 class Demo(Component):
+    increment: int = 0
+
     async def view(self):
-        tags.button("Reload", class_="button")
+        self.increment += 1
+
+        tags.button(self.increment, class_="button")
 
 
 @router.component(id="UserGroup")
 class UserGroup(Component):
+    increment: int = 1
+
     async def view(self, state: State = Depends(State.load)) -> None:
         groups: list[str] = ["internal", "external"]
         dataset = {"htmx-indicator-class": "is-loading"}
@@ -80,7 +87,11 @@ class UserGroup(Component):
             async with state:
                 state.group = group_select.value
 
-        Demo()
+        btn = tags.button(self.increment, id="increment", class_="button")
+
+        if btn.trigger:
+            self.increment += 1
+            btn.content = self.increment
 
 
 def extra_head():

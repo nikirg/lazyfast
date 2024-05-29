@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-__all__ = ["HTMX", "HTMX_PATH_TEMPLATE"]
+__all__ = ["HTMX"]
 
 METHOD_TYPE = Literal["get", "post", "put", "delete"]
 
@@ -14,10 +14,6 @@ SWAP_TYPE = Literal[
     "delete",
     "none",
 ]
-
-
-HTMX_PATH_TEMPLATE = "/__htmx__/{component_id}"
-HTMX_COMPONENT_LOADER_CLASS = "__componentLoader__"
 
 
 class HTMX:
@@ -49,10 +45,6 @@ class HTMX:
         self._current_parent_element = None
 
     @property
-    def class_(self) -> str:
-        return HTMX_COMPONENT_LOADER_CLASS
-
-    @property
     def attrs(self) -> list[tuple[str, Any]]:
         return [
             (f"hx-{self._method}", self._url),
@@ -65,12 +57,3 @@ class HTMX:
             ("hx-ext", self._ext),
             ("sse-connect", self._sse_connect),
         ]
-
-
-def build_component_loader(component_name: str) -> HTMX:
-    return HTMX(
-        url=HTMX_PATH_TEMPLATE.format(component_id=component_name),
-        method="post",
-        trigger="load, reload",
-        include=f"closest .{HTMX_COMPONENT_LOADER_CLASS}",
-    )

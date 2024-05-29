@@ -56,10 +56,6 @@ class State(BaseModel, metaclass=ModelMeta):
             key for key in common_fields if session[key] != state_dict[key]
         }
         new_fields = state_fields - session_fields
-
-        print(state_dict)
-        print(session)
-
         return changed_fields | new_fields
 
     async def _reload_related_components(self, fields: set[str]) -> None:
@@ -68,13 +64,16 @@ class State(BaseModel, metaclass=ModelMeta):
                 for component_id in components:
                     await self._queue.put(component_id)
 
-    async def _commit(self) -> None:
+    def open(self) -> None:
+        self._dump = self.model_dump(exclude_unset=True)
+        
+    async def commit(self) -> None:
         changed_fields = self._get_changed_fields()
         await self._reload_related_components(changed_fields)
 
     async def __aenter__(self) -> Self:
-        self._dump = self.model_dump(exclude_unset=True)
+        self.open()
         return self
 
     async def __aexit__(self, *_) -> None:
-        await self._commit()
+        await self.commit()

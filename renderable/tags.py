@@ -508,6 +508,24 @@ class button(Tag):
     value: str | None = None
 
     onclick: str | None = "reloadComponent(this)"
+    
+    
+    @property
+    def trigger(self) -> bool:
+        if not self.id:
+            raise Exception("Trigger checking requires tag id")
+        
+        inputs = context.get_inputs()
+        if tid := inputs.get("__tid__"):
+            return tid == self.id
+        return False
+        
+    # hx: Type[HTMX] = HTMX(
+    #     url=url,
+    #     method="post",
+    #     include="closest .__componentLoader__",
+    #     target="closest .__componentLoader__",
+    # )
 
 
 @dataclass(slots=True)
