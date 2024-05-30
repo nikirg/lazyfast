@@ -6,7 +6,6 @@ from renderable import tags
 from renderable import context
 
 
-@dataclass_transform(kw_only_default=True, field_specifiers=(Field,))
 class Component(BaseModel):
     _container_id = None
     _url = None

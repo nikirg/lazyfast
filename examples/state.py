@@ -6,6 +6,7 @@ from renderable import RenderableRouter, context, tags, State as BaseState
 from renderable.component import Component
 
 GROUP_TYPE = Literal["internal", "external"]
+GROUPS: list[str] = ["internal", "external"]
 
 
 class User(BaseModel):
@@ -62,12 +63,11 @@ class Demo(Component):
         tags.button(self.increment, class_="button")
 
 
-@router.component(id="UserGroup")
-class UserGroup(Component):
+@router.component(id="UserFilter")
+class UserFilter(Component):
     increment: int = 1
 
     async def view(self, state: State = Depends(State.load)) -> None:
-        groups: list[str] = ["internal", "external"]
         dataset = {"htmx-indicator-class": "is-loading"}
 
         with tags.div(class_="field"):
@@ -76,7 +76,7 @@ class UserGroup(Component):
             with tags.div(class_="control"):
                 with tags.div(class_="select", dataset=dataset):
                     with tags.select(id="group", name="group") as group_select:
-                        for group in groups:
+                        for group in GROUPS:
                             tags.option(
                                 group.capitalize(),
                                 value=group,
@@ -87,11 +87,46 @@ class UserGroup(Component):
             async with state:
                 state.group = group_select.value
 
-        btn = tags.button(self.increment, id="increment", class_="button")
 
-        if btn.trigger:
-            self.increment += 1
-            btn.content = self.increment
+@router.component()
+class UserForm(Component):
+    selected_group: GROUP_TYPE = "internal"
+
+    async def view(self):
+        dataset = {"htmx-indicator-class": "is-loading"}
+
+        with tags.form():
+            with tags.div(class_="field"):
+                tags.label("Name", class_="label", for_="name")
+                tags.input(class_="input", id="name", name="name", type_="text")
+
+            with tags.div(class_="field"):
+                tags.label("Group", class_="label", for_="group")
+
+                with tags.div(class_="control"):
+                    with tags.div(class_="select", dataset=dataset):
+                        with tags.select(id="group", name="group") as group_select:
+                            for group in GROUPS:
+                                tags.option(
+                                    group.capitalize(),
+                                    value=group,
+                                    selected=group == group_select.value,
+                                )
+
+            if group_select.value:
+                self.selected_group = group_select.value
+
+            with tags.div(class_="field"):
+                submit_btn = tags.button(
+                    "Submit",
+                    id="submit",
+                    class_="button",
+                    type_="button",
+                    dataset=dataset,
+                )
+
+                if submit_btn.trigger:
+                    tags.div(context.get_inputs())
 
 
 def extra_head():
@@ -109,7 +144,11 @@ async def root():
         with tags.div(class_="grid"):
             with tags.div(class_="cell"):
                 with tags.div(class_="box"):
-                    UserGroup()
+                    UserForm()
+
+            with tags.div(class_="cell"):
+                with tags.div(class_="box"):
+                    UserFilter()
 
             with tags.div(class_="cell"):
                 with tags.div(class_="box"):

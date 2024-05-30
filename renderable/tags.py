@@ -2,6 +2,8 @@ from abc import ABC
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Callable, Literal, Type
 
+from pydantic import ValidationError, field_validator, model_validator
+
 from renderable import context
 from renderable.htmx import HTMX
 
@@ -128,9 +130,19 @@ class Tag(ABC):
     #         if value is not None
     #     }
     #     return f"{self.tag_name}({', '.join(f'{k}={v}' for k, v in non_none_dict.items())})"
-    
+
     # def __repr__(self):
     #     return str(self)
+
+    @property
+    def trigger(self) -> bool:
+        if not self.id:
+            raise ValueError("Trigger checking requires tag id")
+
+        inputs = context.get_inputs()
+        if tid := inputs.get("__tid__"):
+            return tid == self.id
+        return False
 
     @property
     def tag_name(self) -> str:
@@ -159,10 +171,16 @@ class Tag(ABC):
     def __exit__(self, *_):
         tag_stack.pop_last()
 
-    def __post_init__(self):        
+    def __post_init__(self):
         if parent_tag := tag_stack.get_last():
             parent_tag.add_child(self)
             tag_stack.update_last(parent_tag)
+
+            for tag in tag_stack.stack:
+                if tag.tag_name == "form" and self.tag_name != "button":
+                    self.onclick = None
+                    self.onchange = None
+                    break
 
         else:
             context.add_root_tag(self)
@@ -301,11 +319,6 @@ class col(Tag):
 
 
 @dataclass(slots=True)
-class caption(Tag):
-    pass
-
-
-@dataclass(slots=True)
 class table(Tag):
     pass
 
@@ -438,18 +451,19 @@ _enctype = Literal[
 
 @dataclass(slots=True)
 class form(Tag):
-    accept_charset: str | None = None
-    action: str | None = None
-    # TODO: autocomplete attribute
-    enctype: _enctype | None = None
-    method: Literal["get", "post"] | None = None
-    name: str | None = None
-    # TODO: novalidate attribute
-    target: Literal["_self", "_blank", "_parent", "_top"] | None = None
+    pass
+    # accept_charset: str | None = None
+    # action: str | None = None
+    # # TODO: autocomplete attribute
+    # enctype: _enctype | None = None
+    # method: Literal["get", "post"] | None = None
+    # name: str | None = None
+    # # TODO: novalidate attribute
+    # target: Literal["_self", "_blank", "_parent", "_top"] | None = None
 
-    onreset: Callable | None = None
-    onselect: Callable | None = None
-    onsubmit: Callable | None = None
+    # onreset: Callable | None = None
+    # onselect: Callable | None = None
+    # onsubmit: Callable | None = None
 
 
 _input_type = Literal[
@@ -494,6 +508,15 @@ class input(Tag):
     placeholder: str | None = None
     list: str | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def name_check(cls, values: Any):
+        if values.get("value"):
+            if not values.get("name"):
+                raise ValidationError("Name is required if value is set")
+
+        return values
+
     def __post_init__(self):
         inputs = context.get_inputs()
         self.value = inputs.get(self.name)
@@ -506,26 +529,7 @@ class button(Tag):
     name: str | None = None
     type_: Literal["submit", "reset", "button"] | None = None
     value: str | None = None
-
     onclick: str | None = "reloadComponent(this)"
-    
-    
-    @property
-    def trigger(self) -> bool:
-        if not self.id:
-            raise Exception("Trigger checking requires tag id")
-        
-        inputs = context.get_inputs()
-        if tid := inputs.get("__tid__"):
-            return tid == self.id
-        return False
-        
-    # hx: Type[HTMX] = HTMX(
-    #     url=url,
-    #     method="post",
-    #     include="closest .__componentLoader__",
-    #     target="closest .__componentLoader__",
-    # )
 
 
 @dataclass(slots=True)
@@ -544,8 +548,19 @@ class select(Tag):
 
     onchange: str | None = "reloadComponent(this)"
 
+    @model_validator(mode="before")
+    @classmethod
+    def name_check(cls, values: Any):
+        if values.get("value"):
+            if not values.get("name"):
+                raise ValidationError("Name is required if value is set")
+
+        return values
+
     @property
     def value(self) -> Any:
+        if not self.name:
+            raise ValueError("Name attribute is required for getting value")
         inputs = context.get_inputs()
         return inputs.get(self.name)
 

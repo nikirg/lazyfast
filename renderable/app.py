@@ -23,6 +23,8 @@ from renderable.session import (
 from renderable.state import State, StateField
 from renderable import tags as tags
 
+T = TypeVar('T', bound=Type[Component])
+
 __all__ = ["RenderableRouter"]
 
 LOADER_CLASS = "__componentLoader__"
@@ -217,14 +219,14 @@ class RenderableRouter(APIRouter):
         if dependencies:
             deps.extend(dependencies)
 
-        def decorator(component_cls):
-            if not isinstance(component_cls, type(Component)):
+        def decorator(cls: Type[T]) -> Type[T]:
+            if not isinstance(cls, type(Component)):
                 raise TypeError("Decorated class must be a subclass of Component")
 
-            view_func: Callable = getattr(component_cls, "view")
+            view_func: Callable = getattr(cls, "view")
             is_async = inspect.iscoroutinefunction(view_func)
             view_func = self._replace_self(view_func)
-            url = os.path.join(prefix, path or component_cls.__name__)
+            url = os.path.join(prefix, path or cls.__name__)
 
             container_id = id or self.__class__.__name__
 
@@ -232,8 +234,8 @@ class RenderableRouter(APIRouter):
                 for state_field in reload_on:
                     state_field.register_component_reload(id)
 
-            setattr(component_cls, "_container_id", container_id)
-            setattr(component_cls, "_url", url)
+            setattr(cls, "_container_id", container_id)
+            setattr(cls, "_url", url)
 
             @wraps(view_func)
             async def endpoint(*args, **kwargs):
@@ -264,6 +266,6 @@ class RenderableRouter(APIRouter):
                 include_in_schema=False,
             )
 
-            return component_cls
+            return cls
 
         return decorator
