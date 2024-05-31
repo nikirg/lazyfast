@@ -12,19 +12,27 @@ class Component(BaseModel):
 
     async def view(self) -> None:
         raise NotImplementedError()
-
+    
+    async def reload(self):
+        session = context.get_session()
+        session.state.enqueue(id(self))
+        
     def model_post_init(self, _):
         session = context.get_session()
         session.add_component(self)
         context.set_session(session)
 
-        url = f"{self._url}?id={str(id(self))}"
+        container_id = self._container_id or str(id(self))
+
+        prefix = "cid_"
+        url = f"{self._url}?id={container_id}"
 
         htmx = HTMX(
             url=url,
             method="post",
-            include="#" + self._container_id,
-            trigger=f"load, {self._container_id}, sse:{self._container_id}",
+            include="#" + prefix + container_id,
+            trigger=f"load, {prefix}{container_id}, sse:{container_id}",
+            vals='js:{tid: event?.detail?.tid}',
         )
 
-        tags.div(class_="__componentLoader__", hx=htmx, id=self._container_id)
+        tags.div(class_="__componentLoader__", hx=htmx, id=prefix + container_id)

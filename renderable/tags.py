@@ -463,7 +463,7 @@ class form(Tag):
 
     # onreset: Callable | None = None
     # onselect: Callable | None = None
-    # onsubmit: Callable | None = None
+    onsubmit: str | None = "preventFormSubmission(event)"
 
 
 _input_type = Literal[

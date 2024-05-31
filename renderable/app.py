@@ -23,7 +23,7 @@ from renderable.session import (
 from renderable.state import State, StateField
 from renderable import tags as tags
 
-T = TypeVar('T', bound=Type[Component])
+T = TypeVar("T", bound=Type[Component])
 
 __all__ = ["RenderableRouter"]
 
@@ -58,12 +58,22 @@ function reloadComponent(element) {
     tid.type = "hidden";
     tid.name = "__tid__";
     tid.value = element.id;
+    tid.style.display = 'none';
+    tid.style.position = 'absolute';
+    tid.style.zIndex = '-1';
     componentLoader.appendChild(tid)
+    
+    //componentLoader.dataset.htmxPost = componentLoader.dataset.htmxPost + '?tid=' + element.id;
+    //componentLoader.dataset.htmxHeaders = `{'X-Trigger-Element-Id': ${element.id}}`;
     
     htmx.trigger(componentLoader, componentLoader.id);
 }
 
 htmx.on('htmx:sseError', function(evt){ document.location.reload(); });
+
+function preventFormSubmission(event) {
+    event.preventDefault();
+}
 """
     % LOADER_CLASS
 )
@@ -86,9 +96,15 @@ class RenderableRouter(APIRouter):
         self._state_schema = state_schema
         self._register_sse_endpoint()
 
-    def _init_state_schema(self) -> State | None:
+    async def _init_state_schema(self) -> State | None:
         if self._state_schema:
-            return self._state_schema()
+            state = self._state_schema()
+            try:
+                await state.preload()
+            except NotImplementedError:
+                pass
+
+            return state
         return None
 
     @staticmethod
@@ -106,10 +122,10 @@ class RenderableRouter(APIRouter):
             session = await SessionStorage.get_session(session_id)
             if not session:
 
-                state = self._init_state_schema()
+                state = await self._init_state_schema()
                 session = await SessionStorage.create_session(state)
         else:
-            state = self._init_state_schema()
+            state = await self._init_state_schema()
             session = await SessionStorage.create_session(state)
 
         request.state.session = session
@@ -228,13 +244,13 @@ class RenderableRouter(APIRouter):
             view_func = self._replace_self(view_func)
             url = os.path.join(prefix, path or cls.__name__)
 
-            container_id = id or self.__class__.__name__
-
             if reload_on:
+                if not id:
+                    raise ValueError("id must be specified if reload_on is used")
                 for state_field in reload_on:
                     state_field.register_component_reload(id)
 
-            setattr(cls, "_container_id", container_id)
+            setattr(cls, "_container_id", id)
             setattr(cls, "_url", url)
 
             @wraps(view_func)

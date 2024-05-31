@@ -36,6 +36,9 @@ class State(BaseModel, metaclass=ModelMeta):
     _queue: asyncio.Queue | None = None
     _dump: dict[str, Any] = {}
 
+    async def preload(self) -> None:
+        raise NotImplementedError
+
     @staticmethod
     async def load(request: Request) -> Self:
         return request.state.session.state
@@ -45,6 +48,9 @@ class State(BaseModel, metaclass=ModelMeta):
 
     def dequeue(self) -> Any:
         return self._queue.get()
+    
+    def enqueue(self, value: Any) -> None:
+        self._queue.put_nowait(value)
 
     def _get_changed_fields(self) -> set[str]:
         state_dict = self.model_dump(exclude_unset=True)
@@ -62,7 +68,7 @@ class State(BaseModel, metaclass=ModelMeta):
         for field_name in fields:
             if components := field_to_components.get(field_name):
                 for component_id in components:
-                    await self._queue.put(component_id)
+                    await self.enqueue(component_id)
 
     def open(self) -> None:
         self._dump = self.model_dump(exclude_unset=True)

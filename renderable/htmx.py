@@ -1,3 +1,4 @@
+import json
 from typing import Any, Literal
 
 __all__ = ["HTMX"]
@@ -52,7 +53,10 @@ class HTMX:
             ("hx-trigger", self._trigger),
             ("hx-swap", self._swap),
             ("hx-select", self._select),
-            ("hx-vals", self._vals),
+            (
+                "hx-vals",
+                json.dumps(self._vals) if isinstance(self._vals, dict) else self._vals,
+            ),
             ("hx-target", self._target),
             ("hx-ext", self._ext),
             ("sse-connect", self._sse_connect),
