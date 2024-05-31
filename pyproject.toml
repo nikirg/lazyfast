@@ -11,6 +11,7 @@ fastapi = "^0.105.0"
 uvicorn = "^0.24.0.post1"
 pydantic = "^2.6.4"
 python-multipart = "^0.0.9"
+requests = "^2.32.3"
 
 
 [build-system]

@@ -40,6 +40,7 @@ class StackManager(Generic[T]):
 _root_tags = ContextVar("root_tags", default=[])
 _inputs = ContextVar("inputs", default={})
 _session = ContextVar("session", default={})
+_method = ContextVar("method", default="")
 
 def get_root_tags():
     return _root_tags.get()
@@ -49,17 +50,6 @@ def clear_root_tags():
     
 def add_root_tag(tag):
     _root_tags.get().append(tag)
-
-# def set_component(component):
-#     _current_component.set(component)
-
-
-# def reset_component():
-#     _current_component.set(None)
-
-
-# def get_component():
-#     return _current_component.get()
 
 
 def set_inputs(inputs):
@@ -74,3 +64,10 @@ def set_session(session: dict[str, Any]):
     
 def get_session() -> dict[str, Any]:
     return _session.get()
+
+
+def set_method(method: str):
+    _method.set(method)
+    
+def get_method() -> str:
+    return _method.get()

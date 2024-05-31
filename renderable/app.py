@@ -165,7 +165,7 @@ class RenderableRouter(APIRouter):
 
     @staticmethod
     def _replace_self(method: Callable) -> Callable:
-        async def load_component_instance(id: int) -> Type[Component] | None:
+        async def load_component_instance(id: str) -> Type[Component] | None:
             session = context.get_session()
             return session.get_component(id)
 

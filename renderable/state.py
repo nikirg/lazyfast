@@ -48,33 +48,35 @@ class State(BaseModel, metaclass=ModelMeta):
 
     def dequeue(self) -> Any:
         return self._queue.get()
-    
-    def enqueue(self, value: Any) -> None:
-        self._queue.put_nowait(value)
 
-    def _get_changed_fields(self) -> set[str]:
-        state_dict = self.model_dump(exclude_unset=True)
-        session = self._dump
-        session_fields = set(session.keys())
-        state_fields = set(state_dict.keys())
-        common_fields = session_fields.intersection(state_fields)
-        changed_fields = {
-            key for key in common_fields if session[key] != state_dict[key]
-        }
-        new_fields = state_fields - session_fields
-        return changed_fields | new_fields
+    async def enqueue(self, value: Any) -> None:
+        await self._queue.put(value)
+
+    @staticmethod
+    def _compare_dicts(data1: dict[str, Any], data2: dict[str, Any]) -> set[str]:
+        changed_fields = set()
+        all_keys = set(data1.keys()).union(set(data2.keys()))
+
+        for key in all_keys:
+            if key not in data1 or key not in data2:
+                changed_fields.add(key)
+            elif data1[key] != data2[key]:
+                changed_fields.add(key)
+
+        return changed_fields
 
     async def _reload_related_components(self, fields: set[str]) -> None:
         for field_name in fields:
             if components := field_to_components.get(field_name):
                 for component_id in components:
+                    print(component_id)
                     await self.enqueue(component_id)
 
     def open(self) -> None:
-        self._dump = self.model_dump(exclude_unset=True)
-        
+        self._dump = self.model_dump()
+
     async def commit(self) -> None:
-        changed_fields = self._get_changed_fields()
+        changed_fields = self._compare_dicts(self._dump, self.model_dump())
         await self._reload_related_components(changed_fields)
 
     async def __aenter__(self) -> Self:

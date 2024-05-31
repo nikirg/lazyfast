@@ -65,6 +65,7 @@ __all__ = [
     "dt",
     "blockquote",
     "strong",
+    "style"
 ]
 
 _lang = Literal["en", "ru", "es"]
@@ -382,6 +383,10 @@ class script(Tag):
     integrity: str | None = None
     referrerpolicy: _referrerpolicy | None = None  # type: ignore
 
+@dataclass(slots=True)
+class style(Tag):
+    src: str | None = None
+    type: str | None = None
 
 @dataclass(slots=True)
 class link(Tag):
@@ -507,6 +512,8 @@ class input(Tag):
     value: str | None = None
     placeholder: str | None = None
     list: str | None = None
+    
+    onchange: str | None = "reloadComponent(this)"
 
     @model_validator(mode="before")
     @classmethod
@@ -664,3 +671,11 @@ class strong(Tag):
 class canvas(Tag):
     width: int | None = None
     height: int | None = None
+
+@dataclass(slots=True)
+class small(Tag):
+    pass
+
+@dataclass(slots=True)
+class br(Tag):
+    pass

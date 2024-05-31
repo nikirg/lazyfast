@@ -21,6 +21,8 @@ class TodoList(Component):
                         class_="input", id="task", name="task", type_="text"
                     )
 
+                    warning = tags.div(class_="help is-danger")
+
                 with tags.div(class_="field"):
                     submit_btn = tags.button(
                         "Add", id="submit", class_="button", type_="button"
@@ -28,7 +30,10 @@ class TodoList(Component):
 
                     if submit_btn.trigger:
                         async with state:
-                            state.tasks.append(inp.value)
+                            if inp.value:
+                                state.tasks.append(inp.value)
+                            else:
+                                warning.content = "Task cannot be empty"
 
                         inp.value = None
 
