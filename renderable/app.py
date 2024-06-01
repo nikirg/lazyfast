@@ -152,6 +152,7 @@ class RenderableRouter(APIRouter):
                         await SessionStorage.delete_session(sid)
                         break
                     component_id = await session.get_updated_component_id()
+                    print(component_id)
                     yield f"event: {component_id}\ndata: -\n\n"
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")

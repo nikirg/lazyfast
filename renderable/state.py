@@ -50,7 +50,9 @@ class State(BaseModel, metaclass=ModelMeta):
         return self._queue.get()
 
     async def enqueue(self, value: Any) -> None:
-        await self._queue.put(value)
+        #await self._queue.put(value)
+        print(value)
+        self._queue.put_nowait(value)
 
     @staticmethod
     def _compare_dicts(data1: dict[str, Any], data2: dict[str, Any]) -> set[str]:
@@ -69,7 +71,6 @@ class State(BaseModel, metaclass=ModelMeta):
         for field_name in fields:
             if components := field_to_components.get(field_name):
                 for component_id in components:
-                    print(component_id)
                     await self.enqueue(component_id)
 
     def open(self) -> None:

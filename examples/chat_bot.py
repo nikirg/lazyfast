@@ -1,8 +1,9 @@
+import aiohttp
 from typing import Any, Literal
-import requests
+import markdown
 from dataclasses import dataclass
 
-from fastapi import FastAPI, Depends, Request
+from fastapi import BackgroundTasks, FastAPI, Depends
 from renderable import RenderableRouter, tags, State as BaseState
 from renderable.component import Component
 
@@ -41,19 +42,19 @@ class Message:
     content: str
 
 
-def get_chat_completion(api_key: str, messages: list[Message]) -> dict[str, Any] | None:
+async def get_chat_completion(api_key: str, messages: list[Message]) -> dict[str, Any] | None:
     msgs = [{"role": msg.role, "content": msg.content} for msg in messages]
 
     url = "https://api.openai.com/v1/chat/completions"
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     data = {"model": "gpt-4o", "messages": msgs}
 
-    response = requests.post(url, headers=headers, json=data)
-
-    if response.ok:
-        return response.json()
-
-    print(response.text)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=data) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                print(await response.text())
 
 
 class State(BaseState):
@@ -88,19 +89,22 @@ class ChatConfig(Component):
 @router.component(id="MessagesContainer", reload_on=[State.messages])
 class ChatMessages(Component):
     async def view(self, state: State = Depends(State.load)):
-        with tags.div(class_="chat-container", id="chat-container"):
+        with tags.div(class_="chat-container", id="chat-container") as chat_container:
             for message in state.messages:
                 with tags.div(class_=f"chat-message {message.role}"):
-                    tags.p(message.content)
+                    content = markdown.markdown(message.content)
+                    tags.p(content)
 
         tags.script(
-            'document.getElementById("chat-container").scrollTop = document.getElementById("chat-container").scrollHeight;'
+            f'document.getElementById("{chat_container.id}").scrollTop = document.getElementById("{chat_container.id}").scrollHeight;'
         )
 
 
 @router.component()
 class ChatInput(Component):
-    async def view(self, state: State = Depends(State.load)):
+    async def view(
+        self, background_tasks: BackgroundTasks, state: State = Depends(State.load)
+    ):
         with tags.div(class_="box"):
             with tags.div(class_="field"):
                 inp = tags.input(
@@ -113,16 +117,22 @@ class ChatInput(Component):
                 tags.span("Press Enter to send message", class_="help")
 
         if inp.value:
-            async with state:
-                state.messages.append(Message("user", inp.value))
-                result = get_chat_completion(state.api_token, state.messages)
-                ai_response = result["choices"][0]["message"]["content"]
-                state.messages.append(Message("assistant", ai_response))
-                inp.value = None
+            state.open()
+            state.messages.append(Message("user", inp.value))
+            inp.value = None
+            await state.commit()
+
+            async def generate_response():
+                async with state:
+                    result = await get_chat_completion(state.api_token, state.messages)
+                    ai_response = result["choices"][0]["message"]["content"]
+                    state.messages.append(Message("assistant", ai_response))
+
+            background_tasks.add_task(generate_response)
 
 
 def extra_head():
-    tags.title("Live Search")
+    tags.title("Chat Bot")
     tags.link(
         rel="stylesheet",
         href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css",

@@ -679,3 +679,7 @@ class small(Tag):
 @dataclass(slots=True)
 class br(Tag):
     pass
+
+@dataclass(slots=True)
+class aside(Tag):
+    pass

@@ -12,6 +12,8 @@ uvicorn = "^0.24.0.post1"
 pydantic = "^2.6.4"
 python-multipart = "^0.0.9"
 requests = "^2.32.3"
+aiohttp = "^3.9.5"
+markdown = "^3.6"
 
 
 [build-system]
