@@ -42,7 +42,9 @@ class Message:
     content: str
 
 
-async def get_chat_completion(api_key: str, messages: list[Message]) -> dict[str, Any] | None:
+async def get_chat_completion(
+    api_key: str, messages: list[Message]
+) -> dict[str, Any] | None:
     msgs = [{"role": msg.role, "content": msg.content} for msg in messages]
 
     url = "https://api.openai.com/v1/chat/completions"
