@@ -50,9 +50,7 @@ class State(BaseModel, metaclass=ModelMeta):
         return self._queue.get()
 
     async def enqueue(self, value: Any) -> None:
-        #await self._queue.put(value)
-        print(value)
-        self._queue.put_nowait(value)
+        await self._queue.put(value)
 
     @staticmethod
     def _compare_dicts(data1: dict[str, Any], data2: dict[str, Any]) -> set[str]:

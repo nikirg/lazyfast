@@ -15,7 +15,7 @@ class Component(BaseModel):
     
     async def reload(self):
         session = context.get_session()
-        session.state.enqueue(id(self))
+        await session.state.enqueue(id(self))
         
     def model_post_init(self, _):
         session = context.get_session()

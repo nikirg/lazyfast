@@ -152,7 +152,6 @@ class RenderableRouter(APIRouter):
                         await SessionStorage.delete_session(sid)
                         break
                     component_id = await session.get_updated_component_id()
-                    print(component_id)
                     yield f"event: {component_id}\ndata: -\n\n"
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
@@ -168,7 +167,8 @@ class RenderableRouter(APIRouter):
     def _replace_self(method: Callable) -> Callable:
         async def load_component_instance(id: str) -> Type[Component] | None:
             session = context.get_session()
-            return session.get_component(id)
+            component = session.get_component(id)
+            return component
 
         sig = inspect.signature(method)
 

@@ -42,7 +42,7 @@ class Session:
             return await self._state.dequeue()
 
     def add_component(self, component: Type["Component"]) -> None:
-        self._components[id(component)] = component
+        self._components[str(id(component))] = component
 
     def get_component(self, component_id: int) -> Type["Component"] | None:
         return self._components.get(component_id)
