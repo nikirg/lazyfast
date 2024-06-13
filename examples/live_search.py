@@ -12,6 +12,15 @@ def search_cities(q: str) -> list[str]:
         "Phoenix",
         "Paris",
         "London",
+        "Berlin",
+        "Moscow",
+        "Tokyo",
+        "Delhi",
+        "Jakarta",
+        "Seoul",
+        "Shanghai",
+        "Beijing",
+        "Manila",
     ]
     return [city for city in cities if q.lower() in city.lower()]
 
