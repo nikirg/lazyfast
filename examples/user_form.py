@@ -17,10 +17,7 @@ class User(BaseModel):
 
 class State(BaseState):
     group: GROUP_TYPE = "internal"
-
-
-async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
-    users = [
+    users: list[User] = [
         User(id=1, name="John", group="external"),
         User(id=2, name="Alice", group="internal"),
         User(id=3, name="Anna", group="internal"),
@@ -31,13 +28,16 @@ async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
         User(id=8, name="Kate", group="internal"),
         User(id=9, name="Tim", group="external"),
     ]
-    return [user for user in users if user.group == state.group]
+
+
+async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
+    return [user for user in state.users if user.group == state.group]
 
 
 router = RenderableRouter(state_schema=State)
 
 
-@router.component(id="userList", reload_on=[State.group])
+@router.component(id="userList", reload_on=[State.group, State.users])
 class UserList(Component):
     async def view(self, users: list[User] = Depends(get_user_by_group)):
         with tags.table(class_="table"):
@@ -92,13 +92,15 @@ class UserFilter(Component):
 class UserForm(Component):
     selected_group: GROUP_TYPE = "internal"
 
-    async def view(self):
+    async def view(self, state: State = Depends(State.load)) -> None:
         dataset = {"htmx-indicator-class": "is-loading"}
 
         with tags.form():
             with tags.div(class_="field"):
                 tags.label("Name", class_="label", for_="name")
-                tags.input(class_="input", id="name", name="name", type_="text")
+                name_input = tags.input(
+                    class_="input", id="name", name="name", type_="text"
+                )
 
             with tags.div(class_="field"):
                 tags.label("Group", class_="label", for_="group")
@@ -126,7 +128,14 @@ class UserForm(Component):
                 )
 
                 if submit_btn.trigger:
-                    tags.div(context.get_inputs())
+                    user = User(
+                        id=len(state.users) + 1,
+                        name=name_input.value,
+                        group=self.selected_group,
+                    )
+
+                    async with state:
+                        state.users.append(user)
 
 
 def extra_head():
