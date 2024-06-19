@@ -30,6 +30,7 @@ class HTMX:
         include: str | None = None,
         ext: str | None = None,
         sse_connect: str | None = None,
+        sse_swap: str | None = None,
     ) -> None:
         self._url = url
         self._method = method
@@ -41,6 +42,7 @@ class HTMX:
         self._include = include
         self._ext = ext
         self._sse_connect = sse_connect
+        self._sse_swap = sse_swap
 
         self._current_component = None
         self._current_parent_element = None
@@ -60,4 +62,5 @@ class HTMX:
             ("hx-target", self._target),
             ("hx-ext", self._ext),
             ("sse-connect", self._sse_connect),
+            ("sse-swap", self._sse_swap),
         ]

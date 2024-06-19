@@ -32,7 +32,7 @@ class Component(BaseModel):
             method="post",
             include="#" + prefix + container_id,
             trigger=f"load, {prefix}{container_id}, sse:{container_id}",
-            vals='js:{tid: event?.detail?.tid}',
+            #vals='js:{__tid__: event?.detail?.__tid__}',
         )
 
         tags.div(class_="__componentLoader__", hx=htmx, id=prefix + container_id)

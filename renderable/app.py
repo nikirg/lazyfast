@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 
 from renderable.htmx import HTMX
 from renderable.component import Component
-from renderable import context
+from renderable import context, js
 from renderable.session import (
     SESSION_COOKIE_KEY,
     SESSION_COOKIE_MAX_AGE,
@@ -32,51 +32,6 @@ LOADER_ROUTE = "/__renderable__/{}"
 
 HTMX_CDN = "https://unpkg.com/htmx.org"
 HTMX_SSE = f"{HTMX_CDN}/dist/ext/sse.js"
-
-JS_SCRIPT = (
-    """
-function reloadComponent(element) {
-    const componentLoader = element.closest('.%s');
-    const cssSelector = '[data-htmx-indicator-class], [data-htmx-indicator-content]';
-        
-    const indicatorElmClass = element.closest('[data-htmx-indicator-class]');
-    const indicatorElmContent = element.closest('[data-htmx-indicator-content]');
-    
-    if (indicatorElmClass) {
-        if (indicatorElmClass.dataset.htmxIndicatorClass) {
-            indicatorElmClass.classList.add(indicatorElmClass.dataset.htmxIndicatorClass);
-        }
-    }
-
-    if (indicatorElmContent) {
-        if (indicatorElmContent.dataset.htmxIndicatorContent) {
-            indicatorElmContent.innerHTML = indicatorElmContent.dataset.htmxIndicatorContent;
-        }
-    }
-
-    const tid = document.createElement("input");
-    tid.type = "hidden";
-    tid.name = "__tid__";
-    tid.value = element.id;
-    tid.style.display = 'none';
-    tid.style.position = 'absolute';
-    tid.style.zIndex = '-1';
-    componentLoader.appendChild(tid)
-    
-    //componentLoader.dataset.htmxPost = componentLoader.dataset.htmxPost + '?tid=' + element.id;
-    //componentLoader.dataset.htmxHeaders = `{'X-Trigger-Element-Id': ${element.id}}`;
-    
-    htmx.trigger(componentLoader, componentLoader.id);
-}
-
-htmx.on('htmx:sseError', function(evt){ document.location.reload(); });
-
-function preventFormSubmission(event) {
-    event.preventDefault();
-}
-"""
-    % LOADER_CLASS
-)
 
 
 T = TypeVar("T")
@@ -202,7 +157,7 @@ class RenderableRouter(APIRouter):
                 with tags.head():
                     tags.script(src=HTMX_CDN)
                     tags.script(src=HTMX_SSE)
-                    tags.script(JS_SCRIPT)
+                    tags.script(js.SCRIPT)
 
                     if head:
                         head()

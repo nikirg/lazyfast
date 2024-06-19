@@ -40,10 +40,9 @@ class LiveSearch(Component):
                     name="task",
                     type_="text",
                     placeholder="London",
-                    # onkeyup="reloadComponent(this)",
-                    onchange="reloadComponent(this)",
+                    oninput="throttledReloadComponent(this)",
+                    onchange=None,
                 )
-                tags.span("Press Enter to search", class_="help")
 
         if inp.value:
             cities = search_cities(inp.value)

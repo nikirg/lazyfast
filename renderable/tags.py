@@ -65,7 +65,7 @@ __all__ = [
     "dt",
     "blockquote",
     "strong",
-    "style"
+    "style",
 ]
 
 _lang = Literal["en", "ru", "es"]
@@ -97,6 +97,9 @@ class Tag(ABC):
     aria_labelledby: str | None = None
     aria_expand: str | None = None
     aria_controls: str | None = None
+    popovertarget: str | None = None
+    popover: bool | None = None
+    popovertargetaction: Literal["hide", "show"] | None = None
 
     # Events
     onblur: str | None = None
@@ -383,10 +386,12 @@ class script(Tag):
     integrity: str | None = None
     referrerpolicy: _referrerpolicy | None = None  # type: ignore
 
+
 @dataclass(slots=True)
 class style(Tag):
     src: str | None = None
     type: str | None = None
+
 
 @dataclass(slots=True)
 class link(Tag):
@@ -512,21 +517,21 @@ class input(Tag):
     value: str | None = None
     placeholder: str | None = None
     list: str | None = None
-    
+
     onchange: str | None = "reloadComponent(this)"
-
-    @model_validator(mode="before")
-    @classmethod
-    def name_check(cls, values: Any):
-        if values.get("value"):
-            if not values.get("name"):
-                raise ValidationError("Name is required if value is set")
-
-        return values
+    oninput: str | None = None
 
     def __post_init__(self):
+        if self.value and not self.name:
+            raise ValueError("Name attribute is required if value is set")
+
         inputs = context.get_inputs()
+
         self.value = inputs.get(self.name)
+
+        if self.type_ == "checkbox":
+            self.checked = bool(self.value)
+
         super(input, self).__post_init__()
 
 
@@ -537,6 +542,17 @@ class button(Tag):
     type_: Literal["submit", "reset", "button"] | None = None
     value: str | None = None
     onclick: str | None = "reloadComponent(this)"
+
+    # @model_validator(mode="before")
+    # @classmethod
+    # def remove_onclick_if_popovertarget(cls, values: Any):
+    #     if values.get("popovertarget"):
+    #         values["onclick"] = None
+    #     return values
+    def __post_init__(self):
+        if self.popovertarget:
+            self.onclick = None
+        super(button, self).__post_init__()
 
 
 @dataclass(slots=True)
@@ -554,15 +570,20 @@ class select(Tag):
     size: int | None = None
 
     onchange: str | None = "reloadComponent(this)"
+    oninput: str | None = None
 
-    @model_validator(mode="before")
-    @classmethod
-    def name_check(cls, values: Any):
-        if values.get("value"):
-            if not values.get("name"):
-                raise ValidationError("Name is required if value is set")
+    # @model_validator(mode="before")
+    # @classmethod
+    # def name_check(cls, values: Any):
+    #     if values.get("value"):
+    #         if not values.get("name"):
+    #             raise ValidationError("Name is required if value is set")
 
-        return values
+    #     return values
+    def __post_init__(self):
+        if self.value and not self.name:
+            raise ValueError("Name attribute is required if value is set")
+        super(select, self).__post_init__()
 
     @property
     def value(self) -> Any:
@@ -586,6 +607,7 @@ class textarea(Tag):
     dirname: str | None = None
     form: str | None = None
     wrap: Literal["hard", "soft"] | None = None
+    oninput: str | None = None
 
     def __post_init__(self):
         inputs = context.get_inputs()
@@ -672,13 +694,16 @@ class canvas(Tag):
     width: int | None = None
     height: int | None = None
 
+
 @dataclass(slots=True)
 class small(Tag):
     pass
 
+
 @dataclass(slots=True)
 class br(Tag):
     pass
+
 
 @dataclass(slots=True)
 class aside(Tag):
