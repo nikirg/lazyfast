@@ -9,30 +9,91 @@ from renderable.component import Component
 
 
 STYLE = """
-body { height: 100vh; }
-
 .chat-container {
-    height: 400px;
-    overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+}
+
+.key-input-container {
+  padding: 10px;
+}
+
+.messages-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-input-container {
+  padding: 10px;
+}
+
+.message-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.message {
+  margin: 5px 0;
+  padding: 15px;
+
+}
+
+.user-message {
+    text-align: right;
+    padding: 10px;
+}
+
+.user-content {
     padding: 10px;
     border-radius: 10px;
-    margin-top: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: inline-block;
+    border: 1px solid #ddd;
+    background-color: #f5f5f5;
+    float: right;   
 }
 
-.chat-message {
-    padding: 15px;
-    margin: 10px 0;
-    word-wrap: break-word;
+.assistant-message {
+  text-align: left;
+  padding-left: 20px;
+  padding-top: 25px;
 }
-.chat-message.assistant {
-    text-align: left;
+
+.typing {
+  display: inline-block;
 }
-.chat-message.user {
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    background-color: #f5f5f5;
-    text-align: right;
+
+.dots::after {
+  content: '';
+  display: inline-block;
+  width: 1em;
+  text-align: left;
+  animation: dots 1s steps(4, end) infinite;
 }
+
+@keyframes dots {
+  0%, 100% {
+    content: '';
+  }
+  25% {
+    content: '.';
+  }
+  50% {
+    content: '..';
+  }
+  75% {
+    content: '...';
+  }
+}
+
 """
 
 
@@ -62,6 +123,7 @@ async def get_chat_completion(
 class State(BaseState):
     api_token: str | None = None
     messages: list[Message] = []
+    is_awaiting_response: bool = False
 
 
 router = RenderableRouter(state_schema=State)
@@ -78,27 +140,59 @@ class ChatConfig(Component):
                     id="api_token",
                     name="api_token",
                     type_="text",
+                    placeholder="Enter your OpenAI API token",
+                    onchange="reloadComponent(this)",
                 )
 
-                if not api_token_inp.value and not api_token_inp.trigger:
+                if api_token_inp.trigger:
+                    if token := api_token_inp.value:
+                        state.api_token = token
+                    else:
+                        tags.div("Token cannot be empty", class_="help is-danger")
+
+                if state.api_token:
+                    edit_btn = tags.span(
+                        "Click to edit",
+                        id="edit_api_token",
+                        class_="help is-primary",
+                        onclick="reloadComponent(this)",
+                        style="cursor: pointer;",
+                    )
+
                     api_token_inp.value = state.api_token
 
-        if api_token_inp.trigger:
-            async with state:
-                state.api_token = api_token_inp.value
+                    if edit_btn.trigger:
+                        state.api_token = None
+                        await self.reload()
+
+                    else:
+                        api_token_inp.type_ = "password"
+                        api_token_inp.disabled = True
+
+                else:
+                    tags.div("Press Enter to save", class_="help")
 
 
 @router.component(id="MessagesContainer", reload_on=[State.messages])
 class ChatMessages(Component):
     async def view(self, state: State = Depends(State.load)):
-        with tags.div(class_="chat-container", id="chat-container") as chat_container:
-            for message in state.messages:
-                with tags.div(class_=f"chat-message {message.role}"):
-                    content = markdown.markdown(message.content)
-                    tags.p(content)
+        for message in state.messages:
+            with tags.div(class_=f"message {message.role}-message"):
+                content = markdown.markdown(message.content)
+
+                if message.role == "user":
+                    with tags.p():
+                        tags.div(content, class_="user-content", allow_unsafe_html=True)
+                else:
+                    tags.p(content, allow_unsafe_html=True)
+
+            if state.is_awaiting_response:
+                with tags.div(class_="typing"):
+                    tags.span("Loading")
+                    tags.span(class_="dots")
 
         tags.script(
-            f'document.getElementById("{chat_container.id}").scrollTop = document.getElementById("{chat_container.id}").scrollHeight;'
+            'document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;'
         )
 
 
@@ -119,18 +213,22 @@ class ChatInput(Component):
                 tags.span("Press Enter to send message", class_="help")
 
         if inp.value:
-            state.open()
-            state.messages.append(Message("user", inp.value))
-            inp.value = None
-            await state.commit()
 
             async def generate_response():
                 async with state:
                     result = await get_chat_completion(state.api_token, state.messages)
                     ai_response = result["choices"][0]["message"]["content"]
                     state.messages.append(Message("assistant", ai_response))
+                    state.is_awaiting_response = False
 
+            state.open()
+
+            state.messages.append(Message("user", inp.value))
+            inp.value = None
             background_tasks.add_task(generate_response)
+            state.is_awaiting_response = True
+
+            await state.commit()
 
 
 def extra_head():
@@ -144,15 +242,16 @@ def extra_head():
 
 @router.page("/", head=extra_head)
 def root():
-    with tags.div(class_="container hero is-fullheight p-6"):
-        with tags.header():
-            ChatConfig()
+    with tags.div(class_="container "):
+        with tags.div(class_="chat-container"):
+            with tags.div(class_="key-input-container"):
+                ChatConfig()
 
-        with tags.div():
-            ChatMessages()
+            with tags.div(class_="messages-container", id="messages"):
+                ChatMessages()
 
-        with tags.footer(class_="is-flex-align-items-flex-end mt-auto"):
-            ChatInput()
+            with tags.div(class_="message-input-container"):
+                ChatInput()
 
 
 app = FastAPI()

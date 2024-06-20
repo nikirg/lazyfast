@@ -1,10 +1,21 @@
+from datetime import datetime
 from fastapi import Depends, FastAPI
+from pydantic import BaseModel
 from renderable import RenderableRouter, State as BaseState, tags
 from renderable.component import Component
 
 
+class Task(BaseModel):
+    id: int
+    description: str
+    created_at: datetime = datetime.now()
+
+
 class State(BaseState):
-    tasks: list[str] = []
+    tasks: list[Task] = []
+
+    def delete_task_by_id(self, task_id: int):
+        self.tasks = [task for task in self.tasks if task.id != task_id]
 
 
 router = RenderableRouter(state_schema=State)
@@ -25,27 +36,37 @@ class TodoList(Component):
 
                 with tags.div(class_="field"):
                     submit_btn = tags.button(
-                        "Add", id="submit", class_="button", type_="button"
+                        "Add",
+                        id="submit",
+                        class_="button",
+                        type_="submit",
                     )
 
                     if submit_btn.trigger:
                         async with state:
                             if inp.value:
-                                state.tasks.append(inp.value)
+                                task = Task(
+                                    id=len(state.tasks) + 1, description=inp.value
+                                )
+                                state.tasks.append(task)
                             else:
                                 warning.content = "Task cannot be empty"
 
                         inp.value = None
 
-        for index, task in enumerate(state.tasks):
+        for task in state.tasks:
             with tags.div(class_="box is-flex is-justify-content-space-between"):
-                tags.h2(f"{index + 1}. {task}")
+                with tags.div(style="padding-right: 0.5rem"):
+                    tags.h2(f"{task.id}. {task.description}")
 
-                del_btn = tags.button("x", id=f"del_{index}", class_="button")
+                    humand_readable_time = task.created_at.strftime("%d %b %Y %H:%M")
+                    tags.span(humand_readable_time, class_="help is-info")
+
+                del_btn = tags.button("x", id=f"del_{task.id}", class_="button")
 
                 if del_btn.trigger:
                     async with state:
-                        state.tasks.pop(index)
+                        state.delete_task_by_id(task.id)
                         await self.reload()
 
 

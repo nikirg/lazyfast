@@ -1,8 +1,7 @@
 from abc import ABC
-from dataclasses import asdict, dataclass, field, fields
-from typing import Any, Callable, Literal, Type
-
-from pydantic import ValidationError, field_validator, model_validator
+import html as html_utils
+from dataclasses import dataclass, field
+from typing import Any, Literal, Type
 
 from renderable import context
 from renderable.htmx import HTMX
@@ -15,7 +14,13 @@ ATTR_RENAME_MAP = {
     "for_": "for",
 }
 
-FIELDS_TO_EXCLUDE = ("content", "parent_element", "_children", "_self_closing")
+FIELDS_TO_EXCLUDE = (
+    "content",
+    "parent_element",
+    "_children",
+    "_self_closing",
+    "allow_unsafe_html",
+)
 
 
 __all__ = [
@@ -68,7 +73,39 @@ __all__ = [
     "style",
 ]
 
-_lang = Literal["en", "ru", "es"]
+_lang = Literal[
+    "en",
+    "ru",
+    "es",
+    "fr",
+    "de",
+    "it",
+    "ja",
+    "ko",
+    "zh",
+    "zh-Hant",
+    "zh-Hans",
+    "th",
+    "vi",
+    "pl",
+    "nl",
+    "tr",
+    "fa",
+    "uk",
+    "pt",
+    "cs",
+    "sv",
+    "ro",
+    "hi",
+    "id",
+    "he",
+    "ar",
+    "bn",
+    "ta",
+    "ja-JP-mo",
+    "ko-KR",
+    "zh-CN",
+]
 
 tag_stack = context.StackManager[Type["Tag"]]("tag_stack")
 
@@ -118,25 +155,20 @@ class Tag(ABC):
     onmouseup: str | None = None
     onunload: str | None = None
 
+    itemid: str | None = None
+    itemprop: str | None = None
+    itemref: str | None = None
+    itemscope: bool | None = None
+    itemtype: str | None = None
+
     hx: Type[HTMX] | None = None
+    allow_unsafe_html: bool = False
 
     # TODO xml:_lang
     # TODO aria-*
-    # TODO itemid, itemprop, itemref, itemscope, itemtype
 
     _self_closing: bool = field(default=False, init=False)
     _children: list[Type["Tag"]] = field(default_factory=list)
-
-    # def __str__(self):
-    #     non_none_dict = {
-    #         field.name: value
-    #         for field, value in asdict(self).items()
-    #         if value is not None
-    #     }
-    #     return f"{self.tag_name}({', '.join(f'{k}={v}' for k, v in non_none_dict.items())})"
-
-    # def __repr__(self):
-    #     return str(self)
 
     @property
     def trigger(self) -> bool:
@@ -144,6 +176,7 @@ class Tag(ABC):
             raise ValueError("Trigger checking requires tag id")
 
         inputs = context.get_inputs()
+
         if tid := inputs.get("__tid__"):
             return tid == self.id
         return False
@@ -232,9 +265,15 @@ class Tag(ABC):
 
         if self._self_closing:
             return f"<{self.tag_name}{attrs} />"
+        elif self.content:
+            if self.allow_unsafe_html:
+                content = self.content
+            else:
+                content = html_utils.escape(self.content, quote=True)
         else:
-            content = self.content or self._build_content()
-            return f"<{self.tag_name}{attrs}>{content}</{self.tag_name}>"
+            content = self._build_content()
+
+        return f"<{self.tag_name}{attrs}>{content}</{self.tag_name}>"
 
 
 @dataclass(slots=True)
@@ -386,11 +425,15 @@ class script(Tag):
     integrity: str | None = None
     referrerpolicy: _referrerpolicy | None = None  # type: ignore
 
+    allow_unsafe_html: bool | None = True
+
 
 @dataclass(slots=True)
 class style(Tag):
     src: str | None = None
     type: str | None = None
+
+    allow_unsafe_html: bool | None = True
 
 
 @dataclass(slots=True)
@@ -543,12 +586,6 @@ class button(Tag):
     value: str | None = None
     onclick: str | None = "reloadComponent(this)"
 
-    # @model_validator(mode="before")
-    # @classmethod
-    # def remove_onclick_if_popovertarget(cls, values: Any):
-    #     if values.get("popovertarget"):
-    #         values["onclick"] = None
-    #     return values
     def __post_init__(self):
         if self.popovertarget:
             self.onclick = None
@@ -572,14 +609,6 @@ class select(Tag):
     onchange: str | None = "reloadComponent(this)"
     oninput: str | None = None
 
-    # @model_validator(mode="before")
-    # @classmethod
-    # def name_check(cls, values: Any):
-    #     if values.get("value"):
-    #         if not values.get("name"):
-    #             raise ValidationError("Name is required if value is set")
-
-    #     return values
     def __post_init__(self):
         if self.value and not self.name:
             raise ValueError("Name attribute is required if value is set")

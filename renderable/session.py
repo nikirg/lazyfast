@@ -1,8 +1,6 @@
 import asyncio
 from typing import Type
 import uuid
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from renderable.component import Component
 from renderable.state import State
@@ -44,8 +42,8 @@ class Session:
     def add_component(self, component: Type["Component"]) -> None:
         self._components[str(id(component))] = component
 
-    def get_component(self, component_id: int) -> Type["Component"] | None:
-        return self._components.get(component_id)
+    def get_component(self, component_id: str) -> Type["Component"]:
+        return self._components[str(component_id)]
 
 
 class SessionStorage:
@@ -54,8 +52,7 @@ class SessionStorage:
 
     @staticmethod
     async def get_session(session_id: str) -> Session | None:
-        async with SessionStorage.lock:
-            return SessionStorage.sessions.get(session_id)
+        return SessionStorage.sessions.get(session_id)
 
     @staticmethod
     async def create_session(state: Type[State] | None = None) -> Session:

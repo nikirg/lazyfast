@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 
 from renderable.htmx import HTMX
 from renderable.component import Component
-from renderable import context, js
+from renderable import context
 from renderable.session import (
     SESSION_COOKIE_KEY,
     SESSION_COOKIE_MAX_AGE,
@@ -36,6 +36,10 @@ HTMX_SSE = f"{HTMX_CDN}/dist/ext/sse.js"
 
 T = TypeVar("T")
 P = ParamSpec("P")
+
+
+with open(os.path.join(os.path.dirname(__file__), "script.js")) as file:
+    JS_SCRIPT = file.read()
 
 
 class RenderableRouter(APIRouter):
@@ -152,12 +156,33 @@ class RenderableRouter(APIRouter):
         head: Callable | None = None,
         dependencies: Sequence[Depends] | None = None,
     ):
+        """Register a page
+
+        Args:
+            path (str): Fastapi path of the endpoint.
+            html_lang (str, optional): Language value for "html" tag lang attribute. Defaults to "en".
+            head (Callable | None, optional): A function that render html tags to head section. For example, it can be used to render meta, link, stryle or script tags
+            dependencies (Sequence[Depends], optional): List of fastapi dependencies.
+
+        Returns:
+            Callable: A decorator that registers the page
+
+        Raises:
+            TypeError: If the path is not a string
+
+        Example:
+            >>> @app.page("/home")
+            ... def home():
+            ...     pass
+
+        """
+
         def init_js_scripts():
             with tags.html(lang=html_lang):
                 with tags.head():
                     tags.script(src=HTMX_CDN)
                     tags.script(src=HTMX_SSE)
-                    tags.script(js.SCRIPT)
+                    tags.script(JS_SCRIPT)
 
                     if head:
                         head()
@@ -186,7 +211,32 @@ class RenderableRouter(APIRouter):
         dependencies: Sequence[Depends] | None = None,
         reload_on: list[StateField] | None = None,
         template: Callable | None = None,
+        class_: str | None = None,
     ):
+        """Register a component
+
+        Args:
+            id (str, optional): HTML id of the component div container. If not specified, a python object id will be used. If reload_on is used, id must be specified
+            path (str, optional): Fastapi path of the component view endpoint
+            prefix (str, optional): Path prefix of the component view endpoint
+            dependencies (Sequence[Depends], optional): Fastapi dependencies of the component view endpoint
+            reload_on (list[StateField], optional): State fields whose changes will cause the component to reload. Component id must be specified if reload_on is used
+            template (Callable | None, optional): A function that render html tags extra to the component div
+            class_ (str | None, optional): The class of the component div
+
+        Returns:
+            Callable: A decorator that registers the component
+
+        Raises:
+            ValueError: If id is not specified and reload_on is used
+            TypeError: If the class is not a subclass of Component
+
+        Example:
+            >>> @app.component
+            ... class MyComponent(Component):
+            ...     async def view(self):
+            ...         tags.p("Hello World")
+        """
         deps = [Depends(self._load_inputs)]
         if dependencies:
             deps.extend(dependencies)
@@ -208,6 +258,7 @@ class RenderableRouter(APIRouter):
 
             setattr(cls, "_container_id", id)
             setattr(cls, "_url", url)
+            setattr(cls, "_class", class_)
 
             @wraps(view_func)
             async def endpoint(*args, **kwargs):
