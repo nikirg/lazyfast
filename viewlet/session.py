@@ -2,8 +2,8 @@ import asyncio
 from typing import Type
 import uuid
 
-from renderable.component import Component
-from renderable.state import State
+from viewlet.component import Component
+from viewlet.state import State
 
 
 class Session:

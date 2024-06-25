@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import BackgroundTasks, Depends, FastAPI
-from renderable import RenderableRouter, tags, BaseState
-from renderable.component import Component
+from viewlet import ViewletRouter, tags, BaseState
+from viewlet.component import Component
 import requests
 
 
@@ -19,7 +19,7 @@ class State(BaseState):
     btc_price: float | None = None
 
 
-router = RenderableRouter(state_schema=State)
+router = ViewletRouter(state_schema=State)
 
 
 @router.component(id="currency", reload_on=[State.btc_price])

@@ -12,14 +12,14 @@ from functools import wraps
 from fastapi import Depends, APIRouter, Request, Response, params
 from fastapi.responses import HTMLResponse, StreamingResponse
 
-from renderable import context, tags
-from renderable.htmx import HTMX
-from renderable.component import Component
-from renderable.state import State, StateField
-from renderable.session import Session, SessionStorage
+from viewlet import context, tags
+from viewlet.htmx import HTMX
+from viewlet.component import Component
+from viewlet.state import State, StateField
+from viewlet.session import Session, SessionStorage
 
 
-__all__ = ["RenderableRouter"]
+__all__ = ["ViewletRouter"]
 
 
 T = TypeVar("T")
@@ -32,7 +32,7 @@ with open(
     JS_SCRIPT_TEMPLATE = file.read()
 
 
-class RenderableRouter(APIRouter):
+class ViewletRouter(APIRouter):
     def __init__(
         self,
         state_schema: Type[State] | None = None,
@@ -41,11 +41,11 @@ class RenderableRouter(APIRouter):
         htmx_cdn: str = "https://unpkg.com/htmx.org",
         htmx_sse: str = "https://unpkg.com/htmx.org/dist/ext/sse.js",
         loader_class: str = "__componentLoader__",
-        loader_route_prefix: str = "/__renderable__",
+        loader_route_prefix: str = "/__viewlet__",
         sse_endpoint_dependencies: Sequence[params.Depends] | None = None,
         **fastapi_router_kwargs,
     ):
-        """Renderable Router
+        """Viewlet Router
 
         Args:
             state_schema (Type[State] | None, optional): Schema of the state. Defaults to None.
@@ -55,14 +55,14 @@ class RenderableRouter(APIRouter):
             htmx_cdn (str, optional): CDN of the htmx. Defaults to "https://unpkg.com/htmx.org".
             htmx_sse (str, optional): SSE extension of the htmx. Defaults to "https://unpkg.com/htmx.org/dist/ext/sse.js".
             loader_class (str, optional): CSS Class of the component htmx loader div. Defaults to "__componentLoader__".
-            loader_route_prefix (str, optional): Route of loader request. Defaults to "/__renderable__".
+            loader_route_prefix (str, optional): Route of loader request. Defaults to "/__viewlet__".
             sse_endpoint_dependencies (Sequence[params.Depends] | None, optional): Dependencies of the sse endpoint. Defaults to None.
 
         Raises:
             TypeError: If state_schema is not a subclass of State
 
         Example:
-            >>> router = RenderableRouter(state_schema=State)
+            >>> router = ViewletRouter(state_schema=State)
             ... @router.page("/home")
             ... def home():
             ...     pass

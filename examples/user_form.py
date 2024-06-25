@@ -2,8 +2,8 @@ from typing import Literal
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
-from renderable import RenderableRouter, tags, BaseState
-from renderable.component import Component
+from viewlet import ViewletRouter, tags, BaseState
+from viewlet.component import Component
 
 GROUP_TYPE = Literal["internal", "external"]
 GROUPS: list[str] = ["internal", "external"]
@@ -34,7 +34,7 @@ async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
     return [user for user in state.users if user.group == state.group]
 
 
-router = RenderableRouter(state_schema=State)
+router = ViewletRouter(state_schema=State)
 
 
 @router.component(id="userList", reload_on=[State.group, State.users])

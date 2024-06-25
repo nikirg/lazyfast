@@ -4,8 +4,8 @@ import markdown
 from dataclasses import dataclass
 
 from fastapi import BackgroundTasks, FastAPI, Depends
-from renderable import RenderableRouter, tags, BaseState
-from renderable.component import Component
+from viewlet import ViewletRouter, tags, BaseState
+from viewlet.component import Component
 
 
 STYLE = """
@@ -126,7 +126,7 @@ class State(BaseState):
     is_awaiting_response: bool = False
 
 
-router = RenderableRouter(state_schema=State)
+router = ViewletRouter(state_schema=State)
 
 
 @router.component()
@@ -141,7 +141,7 @@ class ChatConfig(Component):
                     name="api_token",
                     type_="text",
                     placeholder="Enter your OpenAI API token",
-                    onchange="reloadComponent(this)",
+                    reload_on=["change"]
                 )
 
                 if api_token_inp.trigger:
@@ -155,8 +155,8 @@ class ChatConfig(Component):
                         "Click to edit",
                         id="edit_api_token",
                         class_="help is-primary",
-                        onclick="reloadComponent(this)",
                         style="cursor: pointer;",
+                        reload_on=["click"]
                     )
 
                     api_token_inp.value = state.api_token

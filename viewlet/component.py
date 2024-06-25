@@ -1,9 +1,9 @@
 from typing import Callable
 from pydantic import BaseModel
 
-from renderable.htmx import HTMX
-from renderable import tags
-from renderable import context
+from viewlet.htmx import HTMX
+from viewlet import tags
+from viewlet import context
 
 
 class Component(BaseModel):

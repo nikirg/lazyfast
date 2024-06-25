@@ -2,8 +2,8 @@ from asyncio import sleep
 from fastapi import FastAPI, BackgroundTasks, Depends
 from pydantic import BaseModel
 
-from renderable import RenderableRouter, tags
-from renderable.component import Component
+from viewlet import RenderableRouter, tags
+from viewlet.component import Component
 
 style = """
 .popover {

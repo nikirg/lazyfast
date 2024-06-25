@@ -1,6 +1,6 @@
-# Renderable
+# Viewlet
 
-Renderable is a lightweight Python library designed for building modern web interfaces using a component-based approach. It enables writing page logic on the server side in Python, integrating seamlessly with FastAPI. With Renderable, interactive elements like inputs, buttons, and selects trigger component reloads that occur on the server, updating the component's state dynamically.
+Viewlet is a lightweight Python library designed for building modern web interfaces using a component-based approach. It enables writing page logic on the server side in Python, integrating seamlessly with FastAPI. With Viewlet, interactive elements like inputs, buttons, and selects trigger component reloads that occur on the server, updating the component's state dynamically.
 
 ## Key Features
 
@@ -12,24 +12,24 @@ Renderable is a lightweight Python library designed for building modern web inte
 
 ## Installation
 
-To install Renderable, use pip:
+To install Viewlet, use pip:
 
 ```bash
-pip install renderable
+pip install viewlet
 ```
 
 ## Quick Start
 
-Here's an example application to demonstrate how Renderable works:
+Here's an example application to demonstrate how Viewlet works:
 
 ```python
 from fastapi import FastAPI
-from renderable import RenderableRouter, Component, tags
+from viewlet import ViewletRouter, Component, tags
 
-# Renderable router is inherited from FastAPI APIRouter
-router = RenderableRouter()
+# Viewlet router is inherited from FastAPI APIRouter
+router = ViewletRouter()
 
-# Renderable component is a lazy loaded html part, powered by HTMX
+# Viewlet component is a lazy loaded html part, powered by HTMX
 @router.component()
 class MyComponent(Component):
     value: str
@@ -66,4 +66,4 @@ Coming soon.
 
 ## License
 
-Renderable is licensed under the [MIT License](https://github.com/nikirg/renderable/blob/main/LICENSE).
+Viewlet is licensed under the [MIT License](https://github.com/nikirg/renderable/blob/main/LICENSE).

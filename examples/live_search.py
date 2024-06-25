@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from renderable import RenderableRouter, tags
-from renderable.component import Component
+from viewlet import ViewletRouter, tags
+from viewlet.component import Component
 
 
 def search_cities(q: str) -> list[str]:
@@ -25,7 +25,7 @@ def search_cities(q: str) -> list[str]:
     return [city for city in cities if q.lower() in city.lower()]
 
 
-router = RenderableRouter()
+router = ViewletRouter()
 
 
 @router.component()

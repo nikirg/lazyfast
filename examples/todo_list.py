@@ -1,8 +1,8 @@
 from datetime import datetime
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
-from renderable import RenderableRouter, BaseState, tags
-from renderable.component import Component
+from viewlet import ViewletRouter, BaseState, tags
+from viewlet.component import Component
 
 
 class Task(BaseModel):
@@ -18,7 +18,7 @@ class State(BaseState):
         self.tasks = [task for task in self.tasks if task.id != task_id]
 
 
-router = RenderableRouter(state_schema=State)
+router = ViewletRouter(state_schema=State)
 
 
 @router.component()
