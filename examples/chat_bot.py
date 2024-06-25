@@ -4,7 +4,7 @@ import markdown
 from dataclasses import dataclass
 
 from fastapi import BackgroundTasks, FastAPI, Depends
-from renderable import RenderableRouter, tags, State as BaseState
+from renderable import RenderableRouter, tags, BaseState
 from renderable.component import Component
 
 

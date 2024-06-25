@@ -2,7 +2,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
-from renderable import RenderableRouter, context, tags, State as BaseState
+from renderable import RenderableRouter, tags, BaseState
 from renderable.component import Component
 
 GROUP_TYPE = Literal["internal", "external"]
@@ -126,8 +126,11 @@ class UserForm(Component):
                     type_="button",
                     dataset=dataset,
                 )
+                
+                trigger = submit_btn.trigger
+                #tags.h1(trigger)
 
-                if submit_btn.trigger:
+                if trigger:
                     user = User(
                         id=len(state.users) + 1,
                         name=name_input.value,
@@ -139,7 +142,7 @@ class UserForm(Component):
 
 
 def extra_head():
-    # rb.meta(charset="UTF-8")
+    tags.meta(charset="UTF-8")
     tags.title("Renderable demo")
     tags.link(
         rel="stylesheet",

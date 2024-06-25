@@ -1,5 +1,5 @@
-import inspect
 import os
+import inspect
 from typing import (
     Callable,
     ParamSpec,
@@ -8,63 +8,84 @@ from typing import (
     TypeVar,
 )
 from functools import wraps
-from fastapi import Depends, APIRouter, Request, Response
+
+from fastapi import Depends, APIRouter, Request, Response, params
 from fastapi.responses import HTMLResponse, StreamingResponse
 
+from renderable import context, tags
 from renderable.htmx import HTMX
 from renderable.component import Component
-from renderable import context
-from renderable.session import (
-    SESSION_COOKIE_KEY,
-    SESSION_COOKIE_MAX_AGE,
-    Session,
-    SessionStorage,
-)
 from renderable.state import State, StateField
-from renderable import tags as tags
+from renderable.session import Session, SessionStorage
 
-T = TypeVar("T", bound=Type[Component])
 
 __all__ = ["RenderableRouter"]
-
-LOADER_CLASS = "__componentLoader__"
-LOADER_ROUTE = "/__renderable__/{}"
-
-HTMX_CDN = "https://unpkg.com/htmx.org"
-HTMX_SSE = f"{HTMX_CDN}/dist/ext/sse.js"
 
 
 T = TypeVar("T")
 P = ParamSpec("P")
 
 
-with open(os.path.join(os.path.dirname(__file__), "script.js")) as file:
-    JS_SCRIPT = file.read()
+with open(
+    os.path.join(os.path.dirname(__file__), "script.js"), encoding="utf-8"
+) as file:
+    JS_SCRIPT_TEMPLATE = file.read()
 
 
 class RenderableRouter(APIRouter):
     def __init__(
-        self, state_schema: Type[State] | None = None, **fastapi_router_kwargs
+        self,
+        state_schema: Type[State] | None = None,
+        session_cookie_key: str = "sid",
+        session_cookie_max_age: int = 60 * 60 * 24 * 7,
+        htmx_cdn: str = "https://unpkg.com/htmx.org",
+        htmx_sse: str = "https://unpkg.com/htmx.org/dist/ext/sse.js",
+        loader_class: str = "__componentLoader__",
+        loader_route_prefix: str = "/__renderable__",
+        sse_endpoint_dependencies: Sequence[params.Depends] | None = None,
+        **fastapi_router_kwargs,
     ):
+        """Renderable Router
+
+        Args:
+            state_schema (Type[State] | None, optional): Schema of the state. Defaults to None.
+                If you want to use state manager and reload_on triggers, set this argument.
+            session_cookie_key (str, optional): Cookie key of the session. Defaults to "sid".
+            session_cookie_max_age (int, optional): Max age of the session. Defaults to one week.
+            htmx_cdn (str, optional): CDN of the htmx. Defaults to "https://unpkg.com/htmx.org".
+            htmx_sse (str, optional): SSE extension of the htmx. Defaults to "https://unpkg.com/htmx.org/dist/ext/sse.js".
+            loader_class (str, optional): CSS Class of the component htmx loader div. Defaults to "__componentLoader__".
+            loader_route_prefix (str, optional): Route of loader request. Defaults to "/__renderable__".
+            sse_endpoint_dependencies (Sequence[params.Depends] | None, optional): Dependencies of the sse endpoint. Defaults to None.
+
+        Raises:
+            TypeError: If state_schema is not a subclass of State
+
+        Example:
+            >>> router = RenderableRouter(state_schema=State)
+            ... @router.page("/home")
+            ... def home():
+            ...     pass
+        """
+        self._loader_class = loader_class
+        self._loader_route_prefix = loader_route_prefix
+        self._htmx_cdn = htmx_cdn
+        self._htmx_sse = htmx_sse
+        self._session_cookie_key = session_cookie_key
+        self._session_cookie_max_age = session_cookie_max_age
+
         dependencies = fastapi_router_kwargs.get("dependencies", [])
         dependencies.append(Depends(self._get_or_create_session))
         fastapi_router_kwargs["dependencies"] = dependencies
 
+        self._js_script = JS_SCRIPT_TEMPLATE.replace(
+            "__componentLoader__", loader_class
+        )
+
         super().__init__(**fastapi_router_kwargs)
 
         self._state_schema = state_schema
-        self._register_sse_endpoint()
-
-    async def _init_state_schema(self) -> State | None:
-        if self._state_schema:
-            state = self._state_schema()
-            try:
-                await state.preload()
-            except NotImplementedError:
-                pass
-
-            return state
-        return None
+        self._register_sse_endpoint(sse_endpoint_dependencies)
 
     @staticmethod
     async def _load_inputs(request: Request):
@@ -74,17 +95,15 @@ class RenderableRouter(APIRouter):
     async def _get_or_create_session(
         self, request: Request, response: Response
     ) -> Session:
-        session_id = request.cookies.get(SESSION_COOKIE_KEY)
+        session_id = request.cookies.get(self._session_cookie_key)
+        state = self._state_schema() if self._state_schema else None
         session = None
 
         if session_id:
             session = await SessionStorage.get_session(session_id)
             if not session:
-
-                state = await self._init_state_schema()
                 session = await SessionStorage.create_session(state)
         else:
-            state = await self._init_state_schema()
             session = await SessionStorage.create_session(state)
 
         request.state.session = session
@@ -92,15 +111,17 @@ class RenderableRouter(APIRouter):
 
         if not session_id or session_id != session.id:
             response.set_cookie(
-                key=SESSION_COOKIE_KEY,
+                key=self._session_cookie_key,
                 value=session.id,
                 httponly=True,
-                max_age=SESSION_COOKIE_MAX_AGE,
+                max_age=self._session_cookie_max_age,
             )
 
         return session
 
-    def _register_sse_endpoint(self):
+    def _register_sse_endpoint(
+        self, dependencies: Sequence[params.Depends] | None = None
+    ):
         async def sse_endpoint(request: Request):
             async def event_stream():
                 session: Session = request.state.session
@@ -116,10 +137,11 @@ class RenderableRouter(APIRouter):
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 
         self.add_api_route(
-            LOADER_ROUTE.format("sse"),
+            os.path.join(self._loader_route_prefix, "sse"),
             sse_endpoint,
             response_class=StreamingResponse,
             include_in_schema=False,
+            dependencies=dependencies,
         )
 
     @staticmethod
@@ -134,14 +156,14 @@ class RenderableRouter(APIRouter):
         if "self" not in sig.parameters:
             return method
 
-        params = [param for name, param in sig.parameters.items() if name != "self"]
+        args = [param for name, param in sig.parameters.items() if name != "self"]
         self_dep_param = inspect.Parameter(
             "self",
             inspect.Parameter.KEYWORD_ONLY,
             default=Depends(load_component_instance),
         )
-        params.append(self_dep_param)
-        new_sig = sig.replace(parameters=params)
+        args.append(self_dep_param)
+        new_sig = sig.replace(parameters=args)
 
         def wrapper(*args, **kwargs):
             return method(*args, **kwargs)
@@ -161,7 +183,8 @@ class RenderableRouter(APIRouter):
         Args:
             path (str): Fastapi path of the endpoint.
             html_lang (str, optional): Language value for "html" tag lang attribute. Defaults to "en".
-            head (Callable | None, optional): A function that render html tags to head section. For example, it can be used to render meta, link, stryle or script tags
+            head (Callable | None, optional): A function that render html tags to head section.
+                For example, it can be used to render meta, link, stryle or script tags
             dependencies (Sequence[Depends], optional): List of fastapi dependencies.
 
         Returns:
@@ -180,14 +203,17 @@ class RenderableRouter(APIRouter):
         def init_js_scripts():
             with tags.html(lang=html_lang):
                 with tags.head():
-                    tags.script(src=HTMX_CDN)
-                    tags.script(src=HTMX_SSE)
-                    tags.script(JS_SCRIPT)
+                    tags.script(src=self._htmx_cdn)
+                    tags.script(src=self._htmx_sse)
+                    tags.script(self._js_script)
 
                     if head:
                         head()
 
-                hx = HTMX(ext="sse", sse_connect=LOADER_ROUTE.format("sse"))
+                hx = HTMX(
+                    ext="sse",
+                    sse_connect=os.path.join(self._loader_route_prefix, "sse"),
+                )
                 tags.body(hx=hx)
 
         def decorator(func: Callable) -> None:
@@ -207,21 +233,26 @@ class RenderableRouter(APIRouter):
         self,
         id: str | None = None,
         path: str | None = None,
-        prefix: str = "/__renderable__",
+        prefix: str | None = None,
         dependencies: Sequence[Depends] | None = None,
         reload_on: list[StateField] | None = None,
         template: Callable | None = None,
+        preload_content: Callable | None = None,
         class_: str | None = None,
     ):
         """Register a component
 
         Args:
-            id (str, optional): HTML id of the component div container. If not specified, a python object id will be used. If reload_on is used, id must be specified
+            id (str, optional): HTML id of the component div container.
+                If not specified, a python object id will be used.
+                If reload_on is used, id must be specified
             path (str, optional): Fastapi path of the component view endpoint
             prefix (str, optional): Path prefix of the component view endpoint
             dependencies (Sequence[Depends], optional): Fastapi dependencies of the component view endpoint
-            reload_on (list[StateField], optional): State fields whose changes will cause the component to reload. Component id must be specified if reload_on is used
+            reload_on (list[StateField], optional): State fields whose changes will cause the component to reload.
+                Component id must be specified if reload_on is used. Works only if state_schema is set on router
             template (Callable | None, optional): A function that render html tags extra to the component div
+            preload_content (Callable | None, optional): A function that preloads the component content. For example skeletons
             class_ (str | None, optional): The class of the component div
 
         Returns:
@@ -232,7 +263,7 @@ class RenderableRouter(APIRouter):
             TypeError: If the class is not a subclass of Component
 
         Example:
-            >>> @app.component
+            >>> @app.component()
             ... class MyComponent(Component):
             ...     async def view(self):
             ...         tags.p("Hello World")
@@ -246,19 +277,31 @@ class RenderableRouter(APIRouter):
                 raise TypeError("Decorated class must be a subclass of Component")
 
             view_func: Callable = getattr(cls, "view")
+
+            if not callable(view_func):
+                raise TypeError("Decorated class must have a view method")
+
             is_async = inspect.iscoroutinefunction(view_func)
             view_func = self._replace_self(view_func)
-            url = os.path.join(prefix, path or cls.__name__)
+            url = os.path.join(
+                prefix or self._loader_route_prefix, path or cls.__name__
+            )
 
             if reload_on:
                 if not id:
                     raise ValueError("id must be specified if reload_on is used")
+                if not self._state_schema:
+                    raise ValueError(
+                        "state_schema must be set on the router if reload_on is used"
+                    )
                 for state_field in reload_on:
                     state_field.register_component_reload(id)
 
             setattr(cls, "_container_id", id)
             setattr(cls, "_url", url)
             setattr(cls, "_class", class_)
+            setattr(cls, "_loader_class", self._loader_class)
+            setattr(cls, "_preload_content", preload_content)
 
             @wraps(view_func)
             async def endpoint(*args, **kwargs):

@@ -6,23 +6,16 @@ from renderable.component import Component
 from renderable.state import State
 
 
-SESSION_COOKIE_KEY = "sid"
-SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-
-
 class Session:
-    _state: State | None = None
-    _components: dict[int, Type["Component"]] = {}
-    _queue: asyncio.Queue
-    _session_id: str | None = None
-
     def __init__(self, session_id: str, state: State | None = None) -> None:
         self._session_id = session_id
-        self._state = state
         self._queue = asyncio.Queue()
+        self._components: dict[int, Type["Component"]] = {}
 
-        if self._state:
-            self._state.set_queue(self._queue)
+        if state:
+            state.set_queue(self._queue)
+
+        self._state = state
 
     @property
     def id(self) -> str:

@@ -1,7 +1,7 @@
 from datetime import datetime
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
-from renderable import RenderableRouter, State as BaseState, tags
+from renderable import RenderableRouter, BaseState, tags
 from renderable.component import Component
 
 

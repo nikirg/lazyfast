@@ -1,10 +1,13 @@
 from abc import ABC
 import html as html_utils
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Any, Literal, Type
 
 from renderable import context
 from renderable.htmx import HTMX
+
+RELOAD_SCRIPT = "reloadComponent(this, event)"
+THROTTELED_RELOAD_SCRIPT = "throttledReloadComponent(this, event)"
 
 ATTR_RENAME_MAP = {
     "class_": "class",
@@ -12,6 +15,7 @@ ATTR_RENAME_MAP = {
     "async_": "async",
     "type_": "type",
     "for_": "for",
+    "content_": "content",
 }
 
 FIELDS_TO_EXCLUDE = (
@@ -20,6 +24,7 @@ FIELDS_TO_EXCLUDE = (
     "_children",
     "_self_closing",
     "allow_unsafe_html",
+    "reload_on",
 )
 
 
@@ -71,6 +76,7 @@ __all__ = [
     "blockquote",
     "strong",
     "style",
+    "details",
 ]
 
 _lang = Literal[
@@ -138,7 +144,6 @@ class Tag(ABC):
     popover: bool | None = None
     popovertargetaction: Literal["hide", "show"] | None = None
 
-    # Events
     onblur: str | None = None
     onchange: str | None = None
     onclick: str | None = None
@@ -163,6 +168,7 @@ class Tag(ABC):
 
     hx: Type[HTMX] | None = None
     allow_unsafe_html: bool = False
+    reload_on: list[str] | None = None
 
     # TODO xml:_lang
     # TODO aria-*
@@ -171,15 +177,15 @@ class Tag(ABC):
     _children: list[Type["Tag"]] = field(default_factory=list)
 
     @property
-    def trigger(self) -> bool:
+    def trigger(self) -> str | None:
         if not self.id:
             raise ValueError("Trigger checking requires tag id")
 
         inputs = context.get_inputs()
 
         if tid := inputs.get("__tid__"):
-            return tid == self.id
-        return False
+            if tid == self.id:
+                return inputs.get("__evt__")
 
     @property
     def tag_name(self) -> str:
@@ -208,20 +214,40 @@ class Tag(ABC):
     def __exit__(self, *_):
         tag_stack.pop_last()
 
+    def _reset_events(self):
+        for tag_field in fields(self):
+            if tag_field.name.startswith("on"):
+                setattr(self, tag_field.name, None)
+
     def __post_init__(self):
+        if self.reload_on:
+            self._reset_events()
+
+            for event in self.reload_on:
+                if not event.startswith("on"):
+                    event = "on" + self.reload_on
+
+                if event in (
+                    "oninput",
+                    "onkeydown",
+                    "onkeyup",
+                ):
+                    value = THROTTELED_RELOAD_SCRIPT
+                else:
+                    value = RELOAD_SCRIPT
+                setattr(self, event, value)
+
         if parent_tag := tag_stack.get_last():
             parent_tag.add_child(self)
             tag_stack.update_last(parent_tag)
 
             for tag in tag_stack.stack:
                 if tag.tag_name == "form" and self.tag_name != "button":
-                    self.onclick = None
-                    self.onchange = None
+                    self._reset_events()
                     break
 
         else:
             context.add_root_tag(self)
-
         # else:
         #     raise RuntimeError(
         #         "Tags can only be created within a method decorated with a @router.page or @router.component"
@@ -269,7 +295,7 @@ class Tag(ABC):
             if self.allow_unsafe_html:
                 content = self.content
             else:
-                content = html_utils.escape(self.content, quote=True)
+                content = html_utils.escape(str(self.content), quote=True)
         else:
             content = self._build_content()
 
@@ -338,12 +364,24 @@ class h6(Tag):
     pass
 
 
+_referrerpolicy = Literal[
+    "no-referrer",
+    "no-referrer-when-downgrade",
+    "same-origin",
+    "origin",
+    "origin-when-cross-origin",
+    "unsafe-url",
+]
+
+
 @dataclass(slots=True)
 class a(Tag):
     href: str | None = None
     rel: str | None = None
     type_: str | None = None
-    # TODO: other atrributes
+    crossorigin: Literal["anonymous", "use-credentials"] | None = None
+    integrity: str | None = None
+    referrerpolicy: _referrerpolicy | None = None
 
 
 @dataclass(slots=True)
@@ -451,7 +489,7 @@ class meta(Tag):
     _self_closing = True
 
     name: str | None = None
-    content: str | None = None
+    content_: str | None = None
     charset: str | None = None
     http_equiv: str | None = None
     scheme: str | None = None
@@ -561,7 +599,7 @@ class input(Tag):
     placeholder: str | None = None
     list: str | None = None
 
-    onchange: str | None = "reloadComponent(this)"
+    onchange: str | None = THROTTELED_RELOAD_SCRIPT
     oninput: str | None = None
 
     def __post_init__(self):
@@ -584,7 +622,7 @@ class button(Tag):
     name: str | None = None
     type_: Literal["submit", "reset", "button"] | None = None
     value: str | None = None
-    onclick: str | None = "reloadComponent(this)"
+    onclick: str | None = RELOAD_SCRIPT
 
     def __post_init__(self):
         if self.popovertarget:
@@ -606,7 +644,7 @@ class select(Tag):
     required: bool | None = None
     size: int | None = None
 
-    onchange: str | None = "reloadComponent(this)"
+    onchange: str | None = RELOAD_SCRIPT
     oninput: str | None = None
 
     def __post_init__(self):
@@ -636,7 +674,7 @@ class textarea(Tag):
     dirname: str | None = None
     form: str | None = None
     wrap: Literal["hard", "soft"] | None = None
-    oninput: str | None = None
+    oninput: str | None = RELOAD_SCRIPT
 
     def __post_init__(self):
         inputs = context.get_inputs()
@@ -737,3 +775,8 @@ class br(Tag):
 @dataclass(slots=True)
 class aside(Tag):
     pass
+
+
+@dataclass(slots=True)
+class details(Tag):
+    open: bool | None = None

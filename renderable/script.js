@@ -18,9 +18,8 @@ function throttle(func, wait = 1000) {
   };
 }
 
-function reloadComponent(element) {
+function reloadComponent(element, event) {
   const componentLoader = element.closest('.__componentLoader__');
-
   const indicatorElmClass = element.closest('[data-htmx-indicator-class]');
   const indicatorElmContent = element.closest('[data-htmx-indicator-content]');
 
@@ -36,7 +35,8 @@ function reloadComponent(element) {
     }
   }
 
-  componentLoader.setAttribute('hx-vals', JSON.stringify({ __tid__: element.id }));
+  const extraVals = JSON.stringify({ __tid__: element.id, __evt__: event?.type });
+  componentLoader.setAttribute('hx-vals', extraVals);
   htmx.trigger(componentLoader, componentLoader.id);
 }
 

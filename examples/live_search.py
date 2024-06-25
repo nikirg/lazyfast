@@ -40,8 +40,7 @@ class LiveSearch(Component):
                     name="task",
                     type_="text",
                     placeholder="London",
-                    oninput="throttledReloadComponent(this)",
-                    onchange=None,
+                    reload_on=["oninput"],
                 )
 
         if inp.value:

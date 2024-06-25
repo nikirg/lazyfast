@@ -1,6 +1,6 @@
 import asyncio
 from fastapi import BackgroundTasks, Depends, FastAPI
-from renderable import RenderableRouter, tags, State as BaseState
+from renderable import RenderableRouter, tags, BaseState
 from renderable.component import Component
 import requests
 

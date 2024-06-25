@@ -1,3 +1,4 @@
+from typing import Callable
 from pydantic import BaseModel
 
 from renderable.htmx import HTMX
@@ -10,6 +11,8 @@ class Component(BaseModel):
     _url = None
     _class = None
     _id_prefix = "cid_"
+    _loader_class = None
+    _preload_content: Callable | None = None
 
     @property
     def component_id(self) -> str:
@@ -43,8 +46,10 @@ class Component(BaseModel):
             trigger=f"load, {container_id}, sse:{container_id}",
         )
 
-        tags.div(
-            class_="__componentLoader__" + (self._class or ""),
+        with tags.div(
+            class_=self._loader_class + " " +(self._class or ""),
             hx=htmx,
             id=container_id,
-        )
+        ):
+            if self._preload_content:
+                self._preload_content()

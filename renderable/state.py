@@ -5,8 +5,6 @@ from fastapi import Request
 from pydantic import BaseModel, Field
 from pydantic._internal._model_construction import ModelMetaclass
 
-from renderable import context
-
 field_to_components: dict[str, list[str]] = defaultdict(set)
 
 
@@ -27,7 +25,7 @@ class StateField:
 @dataclass_transform(kw_only_default=True, field_specifiers=(Field,))
 class ModelMeta(ModelMetaclass):
     def __getattr__(cls, name):
-        if name in cls.__annotations__:
+        if name in cls.__annotations__ and not name.startswith("_"):
             return StateField(name)
         return super().__getattr__(name)
 
@@ -35,9 +33,6 @@ class ModelMeta(ModelMetaclass):
 class State(BaseModel, metaclass=ModelMeta):
     _queue: asyncio.Queue | None = None
     _dump: dict[str, Any] = {}
-
-    async def preload(self) -> None:
-        raise NotImplementedError
 
     @staticmethod
     async def load(request: Request) -> Self:
