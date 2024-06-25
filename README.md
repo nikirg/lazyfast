@@ -4,12 +4,11 @@ Renderable is a lightweight Python library designed for building modern web inte
 
 ## Key Features
 
-1. **Component-Based Approach**: Build web interfaces using components that encapsulate logic, state, and presentation. 
+1. **Component-Based Approach**: Build web interfaces using lazy loaded components that encapsulate logic, state, and presentation. 
 2. **Server-Side Logic**: Handle interactions and state management on the server, reducing client-side complexity.
 3. **FastAPI Integration**: Each component or page is a FastAPI endpoint, allowing for dependency injection and other FastAPI features.
 4. **Lightweight**: The only dependencies are FastAPI for Python and HTMX for JavaScript, which can be included via CDN.
 5. **State Management**: Utilize a state manager that can trigger component reloads, ensuring a reactive user experience.
-6. **Lazy Loading**: Components are only loaded when they are first rendered, improving performance.
 
 ## Installation
 
@@ -38,14 +37,20 @@ class MyComponent(Component):
     # We can define html rendering logic by overriding the view method
     # View method is FastAPI endpoint, which supports dependency injection
     async def view(self, request: Request) -> None:
-        tags.h1(self.value)
-        tags.div(request.headers)
+        # We can use familiar html tags like python objects with all standard html attributes
+        # First parameter is the InnerHTML of the tag
+        tags.h1(self.value, class_="my-class")
+        # If we want add another html tags to innnerHTML, we can use "with" operator
+        with tags.div(style="border: 1px solid black"):
+            # This span is child of the div
+            tags.span(request.headers)
 
 # Page initialize the dependencies for component rendering
 # Page endpoint is also a FastAPI endpoint
 @router.page("/{name}")
 def root(name: str):
     with tags.div(class_="container mt-6"):
+        # This component initialization embed HTMX div and trigger the view method only after the div is rendered
         MyComponent(value=f"Hello, World from {name}")
 
 # We can embed the router in a FastAPI app
