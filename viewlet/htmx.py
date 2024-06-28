@@ -31,6 +31,7 @@ class HTMX:
         ext: str | None = None,
         sse_connect: str | None = None,
         sse_swap: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         self._url = url
         self._method = method
@@ -41,6 +42,7 @@ class HTMX:
         self._vals = vals
         self._include = include
         self._ext = ext
+        self._headers = headers
         self._sse_connect = sse_connect
         self._sse_swap = sse_swap
 
@@ -61,6 +63,7 @@ class HTMX:
             ),
             ("hx-target", self._target),
             ("hx-ext", self._ext),
+            ("hx-headers", json.dumps(self._headers) if self._headers else None),
             ("sse-connect", self._sse_connect),
             ("sse-swap", self._sse_swap),
         ]

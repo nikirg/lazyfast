@@ -608,7 +608,7 @@ class input(Tag):
 
         inputs = context.get_inputs()
 
-        self.value = inputs.get(self.name)
+        self.value = inputs.get(self.name, self.value)
 
         if self.type_ == "checkbox":
             self.checked = bool(self.value)

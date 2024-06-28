@@ -42,12 +42,12 @@ class Component(BaseModel):
         htmx = HTMX(
             url=url,
             method="post",
-            include="#" + container_id,
+            include="#CSRFToken, #" + container_id,
             trigger=f"load, {container_id}, sse:{container_id}",
         )
 
         with tags.div(
-            class_=self._loader_class + " " +(self._class or ""),
+            class_=self._loader_class + " " + (self._class or ""),
             hx=htmx,
             id=container_id,
         ):

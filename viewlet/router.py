@@ -1,5 +1,4 @@
-import os
-import inspect
+import os, hmac, hashlib, inspect, base64
 from typing import (
     Callable,
     ParamSpec,
@@ -9,7 +8,7 @@ from typing import (
 )
 from functools import wraps
 
-from fastapi import Depends, APIRouter, Request, Response, params
+from fastapi import Depends, APIRouter, HTTPException, Request, Response, params
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from viewlet import context, tags
@@ -90,7 +89,20 @@ class ViewletRouter(APIRouter):
     @staticmethod
     async def _load_inputs(request: Request):
         inputs = dict(await request.form())
+        if request.method != "GET":
+            csrf_token = inputs.get("CSRFToken")
+
+            if csrf_token != request.state.session.csrf_token:
+                raise HTTPException(status_code=403, detail="CSRF token is invalid")
         context.set_inputs(inputs)
+
+    @staticmethod
+    def _generate_csrf_token() -> str:
+        secret_key = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8")
+        token = hmac.new(
+            secret_key.encode(), os.urandom(32), hashlib.sha256
+        ).hexdigest()
+        return token
 
     async def _get_or_create_session(
         self, request: Request, response: Response
@@ -102,9 +114,13 @@ class ViewletRouter(APIRouter):
         if session_id:
             session = await SessionStorage.get_session(session_id)
             if not session:
-                session = await SessionStorage.create_session(state)
+                session = await SessionStorage.create_session(
+                    state, self._generate_csrf_token()
+                )
         else:
-            session = await SessionStorage.create_session(state)
+            session = await SessionStorage.create_session(
+                state, self._generate_csrf_token()
+            )
 
         request.state.session = session
         context.set_session(session)
@@ -200,7 +216,7 @@ class ViewletRouter(APIRouter):
 
         """
 
-        def init_js_scripts():
+        def init_js_scripts(csrf_token: str | None = None):
             with tags.html(lang=html_lang):
                 with tags.head():
                     tags.script(src=self._htmx_cdn)
@@ -212,9 +228,19 @@ class ViewletRouter(APIRouter):
 
                 hx = HTMX(
                     ext="sse",
-                    sse_connect=os.path.join(self._loader_route_prefix, "sse"),
+                    sse_connect=os.path.join(
+                        self.prefix, self._loader_route_prefix, "sse"
+                    ),
                 )
-                tags.body(hx=hx)
+
+                with tags.body(hx=hx):
+                    tags.input(
+                        id="CSRFToken",
+                        type_="hidden",
+                        value=csrf_token,
+                        name="CSRFToken",
+                        onchange=None,
+                    )
 
         def decorator(func: Callable) -> None:
             class PageComponent(Component):
@@ -307,8 +333,10 @@ class ViewletRouter(APIRouter):
             async def endpoint(*args, **kwargs):
                 context.clear_root_tags()
 
+                csrf_token = context.get_session().csrf_token
+
                 if template:
-                    template()
+                    template(csrf_token)
 
                 try:
                     if is_async:

@@ -7,15 +7,22 @@ from viewlet.state import State
 
 
 class Session:
-    def __init__(self, session_id: str, state: State | None = None) -> None:
+    def __init__(
+        self, session_id: str, state: State | None = None, csrf_token: str | None = None
+    ) -> None:
         self._session_id = session_id
         self._queue = asyncio.Queue()
         self._components: dict[int, Type["Component"]] = {}
+        self._csrf_token = csrf_token
 
         if state:
             state.set_queue(self._queue)
 
         self._state = state
+
+    @property
+    def csrf_token(self) -> str | None:
+        return self._csrf_token
 
     @property
     def id(self) -> str:
@@ -48,11 +55,13 @@ class SessionStorage:
         return SessionStorage.sessions.get(session_id)
 
     @staticmethod
-    async def create_session(state: Type[State] | None = None) -> Session:
+    async def create_session(
+        state: Type[State] | None = None, csrf_token: str | None = None
+    ) -> Session:
         session_id = str(uuid.uuid4())
 
         async with SessionStorage.lock:
-            session = Session(session_id, state)
+            session = Session(session_id, state, csrf_token)
             SessionStorage.sessions[session_id] = session
             return session
 

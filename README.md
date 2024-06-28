@@ -23,37 +23,45 @@ pip install viewlet
 Here's an example application to demonstrate how Viewlet works:
 
 ```python
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from viewlet import ViewletRouter, Component, tags
 
-# Viewlet router is inherited from FastAPI APIRouter
+
+# ViewletRouter inherits from FastAPI's APIRouter
 router = ViewletRouter()
 
-# Viewlet component is a lazy loaded html part, powered by HTMX
+# Define a lazy-loaded HTML component powered by HTMX
 @router.component()
 class MyComponent(Component):
-    value: str
+    # Define a state field to store the component's value
+    # We can pass this value from parent page or component
+    # Or we can use it as local component state
+    title: str
 
-    # We can define html rendering logic by overriding the view method
-    # View method is FastAPI endpoint, which supports dependency injection
+    # Override the view method to define HTML rendering logic
+    # The view method is a FastAPI endpoint supporting dependency injection
     async def view(self, request: Request) -> None:
-        # We can use familiar html tags like python objects with all standard html attributes
-        # First parameter is the InnerHTML of the tag
-        tags.h1(self.value, class_="my-class")
-        # If we want add another html tags to innnerHTML, we can use "with" operator
+
+        # Use familiar HTML tags as Python objects with standard HTML attributes
+        # The first parameter is the inner HTML of the tag
+        tags.h1(self.title, class_="my-class")
+
+        # Use the "with" operator to add additional HTML tags to the inner HTML
         with tags.div(style="border: 1px solid black"):
-            # This span is child of the div
+
+            # This span is a child of the div
             tags.span(request.headers)
 
-# Page initialize the dependencies for component rendering
-# Page endpoint is also a FastAPI endpoint
+# Initialize the page dependencies for component rendering
+# The page endpoint is also a FastAPI endpoint
 @router.page("/{name}")
 def root(name: str):
     with tags.div(class_="container mt-6"):
-        # This component initialization embed HTMX div and trigger the view method only after the div is rendered
-        MyComponent(value=f"Hello, World from {name}")
 
-# We can embed the router in a FastAPI app
+        # Initialize this component to embed an HTMX div and trigger the view method only after the div is rendered
+        MyComponent(title=f"Hello, World from {name}")
+
+# Embed the router in a FastAPI app
 app = FastAPI()
 app.include_router(router)
 ```
