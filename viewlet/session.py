@@ -14,6 +14,7 @@ class Session:
         self._queue = asyncio.Queue()
         self._components: dict[int, Type["Component"]] = {}
         self._csrf_token = csrf_token
+        self._current_path = None
 
         if state:
             state.set_queue(self._queue)
@@ -31,7 +32,15 @@ class Session:
     @property
     def state(self) -> State:
         return self._state
+    
+    @property
+    def current_path(self) -> str | None:
+        return self._current_path
 
+    def set_current_path(self, path: str) -> None:
+        self._current_path = path
+        
+        
     def set_state(self, state: State) -> None:
         self._state = state
 

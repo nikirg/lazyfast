@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from viewlet.htmx import HTMX
 from viewlet import tags
 from viewlet import context
+from viewlet.utils import url_join
 
 
 class Component(BaseModel):
@@ -29,6 +30,9 @@ class Component(BaseModel):
         session = context.get_session()
         await session.state.enqueue(self.container_id)
 
+    def set_path_params(self, **kwargs):
+        self._container.hx.set_path_params(**kwargs)
+
     def model_post_init(self, _):
         session = context.get_session()
         session.add_component(self)
@@ -37,12 +41,14 @@ class Component(BaseModel):
         component_id = self.component_id
         container_id = self.container_id
 
-        url = f"{self._url}?id={component_id}"
+        url = url_join(
+            session.current_path, self._url, query_params={"__cid__": component_id}
+        )
 
         htmx = HTMX(
             url=url,
             method="post",
-            include="#CSRFToken, #" + container_id,
+            include=f"#csrf, #{container_id}",
             trigger=f"load, {container_id}, sse:{container_id}",
         )
 
@@ -50,6 +56,8 @@ class Component(BaseModel):
             class_=self._loader_class + " " + (self._class or ""),
             hx=htmx,
             id=container_id,
-        ):
+        ) as container:
             if self._preload_content:
                 self._preload_content()
+
+        self._container = container

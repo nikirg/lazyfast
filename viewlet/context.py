@@ -39,7 +39,7 @@ class StackManager(Generic[T]):
 
 _root_tags = ContextVar("root_tags", default=[])
 _inputs = ContextVar("inputs", default={})
-_session = ContextVar("session", default={})
+_session = ContextVar("session", default=None)
 _method = ContextVar("method", default="")
 
 def get_root_tags():

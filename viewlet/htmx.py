@@ -49,6 +49,9 @@ class HTMX:
         self._current_component = None
         self._current_parent_element = None
 
+    def set_path_params(self, **kwargs):
+        self._url = self._url.format(**kwargs)
+
     @property
     def attrs(self) -> list[tuple[str, Any]]:
         return [

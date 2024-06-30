@@ -16,6 +16,7 @@ from viewlet.htmx import HTMX
 from viewlet.component import Component
 from viewlet.state import State, StateField
 from viewlet.session import Session, SessionStorage
+from viewlet.utils import generate_csrf_token, url_join
 
 
 __all__ = ["ViewletRouter"]
@@ -90,19 +91,11 @@ class ViewletRouter(APIRouter):
     async def _load_inputs(request: Request):
         inputs = dict(await request.form())
         if request.method != "GET":
-            csrf_token = inputs.get("CSRFToken")
+            csrf_token = inputs.get("csrf")
 
             if csrf_token != request.state.session.csrf_token:
                 raise HTTPException(status_code=403, detail="CSRF token is invalid")
         context.set_inputs(inputs)
-
-    @staticmethod
-    def _generate_csrf_token() -> str:
-        secret_key = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8")
-        token = hmac.new(
-            secret_key.encode(), os.urandom(32), hashlib.sha256
-        ).hexdigest()
-        return token
 
     async def _get_or_create_session(
         self, request: Request, response: Response
@@ -115,13 +108,12 @@ class ViewletRouter(APIRouter):
             session = await SessionStorage.get_session(session_id)
             if not session:
                 session = await SessionStorage.create_session(
-                    state, self._generate_csrf_token()
+                    state, generate_csrf_token()
                 )
         else:
-            session = await SessionStorage.create_session(
-                state, self._generate_csrf_token()
-            )
+            session = await SessionStorage.create_session(state, generate_csrf_token())
 
+        session.set_current_path = request.url.path
         request.state.session = session
         context.set_session(session)
 
@@ -153,7 +145,7 @@ class ViewletRouter(APIRouter):
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 
         self.add_api_route(
-            os.path.join(self._loader_route_prefix, "sse"),
+            url_join(self._loader_route_prefix, "sse"),
             sse_endpoint,
             response_class=StreamingResponse,
             include_in_schema=False,
@@ -162,9 +154,9 @@ class ViewletRouter(APIRouter):
 
     @staticmethod
     def _replace_self(method: Callable) -> Callable:
-        async def load_component_instance(id: str) -> Type[Component] | None:
+        async def load_component_instance(__cid__: str) -> Type[Component] | None:
             session = context.get_session()
-            component = session.get_component(id)
+            component = session.get_component(__cid__)
             return component
 
         sig = inspect.signature(method)
@@ -226,19 +218,20 @@ class ViewletRouter(APIRouter):
                     if head:
                         head()
 
+                session = context.get_session()
                 hx = HTMX(
                     ext="sse",
-                    sse_connect=os.path.join(
-                        self.prefix, self._loader_route_prefix, "sse"
+                    sse_connect=url_join(
+                        session.current_path, self._loader_route_prefix, "sse"
                     ),
                 )
 
                 with tags.body(hx=hx):
                     tags.input(
-                        id="CSRFToken",
+                        id="csrf",
                         type_="hidden",
                         value=csrf_token,
-                        name="CSRFToken",
+                        name="csrf",
                         onchange=None,
                     )
 
@@ -250,7 +243,10 @@ class ViewletRouter(APIRouter):
             setattr(PageComponent, "view", func)
 
             self.component(
-                path=path, dependencies=dependencies, template=init_js_scripts
+                path=path,
+                dependencies=dependencies,
+                template=init_js_scripts,
+                prefix="",
             )(PageComponent)
 
         return decorator
@@ -309,8 +305,9 @@ class ViewletRouter(APIRouter):
 
             is_async = inspect.iscoroutinefunction(view_func)
             view_func = self._replace_self(view_func)
-            url = os.path.join(
-                prefix or self._loader_route_prefix, path or cls.__name__
+            url = url_join(
+                self._loader_route_prefix if prefix is None else prefix,
+                path or cls.__name__,
             )
 
             if reload_on:
@@ -357,7 +354,7 @@ class ViewletRouter(APIRouter):
                 dependencies=deps,
                 response_class=HTMLResponse,
                 methods=["GET", "POST"],
-                include_in_schema=False,
+                include_in_schema=True,
             )
 
             return cls
