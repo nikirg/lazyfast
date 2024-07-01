@@ -46,26 +46,30 @@ class ViewletRouter(APIRouter):
         sse_endpoint_dependencies: Sequence[params.Depends] | None = None,
         **fastapi_router_kwargs,
     ):
-        """Viewlet Router
+        """
+        Viewlet Router
+
+        This class provides routing functionalities for your web application, integrating state management, session handling, and HTMX support.
 
         Args:
-            state_schema (Type[State] | None, optional): Schema of the state. Defaults to None.
-                If you want to use state manager and reload_on triggers, set this argument.
-            session_cookie_key (str, optional): Cookie key of the session. Defaults to "sid".
-            session_cookie_max_age (int, optional): Max age of the session. Defaults to one week.
-            session_delete_timeout (int, optional): The duration in seconds after a client disconnects, beyond which the client's session is automatically terminated. Defaults to 10.
-            htmx_cdn (str, optional): CDN of the htmx. Defaults to "https://unpkg.com/htmx.org".
-            htmx_sse (str, optional): SSE extension of the htmx. Defaults to "https://unpkg.com/htmx.org/dist/ext/sse.js".
-            loader_class (str, optional): CSS Class of the component htmx loader div. Defaults to "__componentLoader__".
-            loader_route_prefix (str, optional): Route of loader request. Defaults to "/__viewlet__".
-            sse_endpoint_dependencies (Sequence[params.Depends] | None, optional): Dependencies of the sse endpoint. Defaults to None.
+            state_schema (Type[State], optional): Schema for managing the state. Defaults to None.
+                Set this argument if you want to use the state manager and reload_on triggers.
+            session_cookie_key (str, optional): Key for the session cookie. Defaults to "sid".
+            session_cookie_max_age (int, optional): Maximum age of the session cookie in seconds. Defaults to one week (604800 seconds).
+            session_delete_timeout (int, optional): Duration in seconds after a client disconnects, 
+                beyond which the client's session is automatically terminated. Defaults to 10 seconds.
+            htmx_cdn (str, optional): URL of the HTMX CDN. Defaults to "https://unpkg.com/htmx.org".
+            htmx_sse (str, optional): URL of the HTMX SSE extension. Defaults to "https://unpkg.com/htmx.org/dist/ext/sse.js".
+            loader_class (str, optional): CSS class for the component HTMX loader div. Defaults to "__componentLoader__".
+            loader_route_prefix (str, optional): Prefix for the loader request route. Defaults to "/__viewlet__".
+            sse_endpoint_dependencies (Sequence[params.Depends], optional): Dependencies for the SSE endpoint. Defaults to None.
 
         Raises:
-            TypeError: If state_schema is not a subclass of State
+            TypeError: Raised if state_schema is not a subclass of State.
 
         Example:
             >>> router = ViewletRouter(state_schema=State)
-            ... @router.page("/home")
+            >>> @router.page("/home")
             ... def home():
             ...     pass
         """

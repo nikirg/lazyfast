@@ -21,8 +21,9 @@ class Form(Component):
                         reload_on=["change"],
                     )
 
-                    if file := inp.value:
-                        tags.h1(f"File: {file.filename}")
+        if file := inp.value:
+            tags.h1(f"File: {file.filename}")
+
 
 def extra_head():
     tags.title("Mega Form")

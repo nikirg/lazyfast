@@ -25,6 +25,7 @@ FIELDS_TO_EXCLUDE = (
     "_self_closing",
     "allow_unsafe_html",
     "reload_on",
+    "is_indicator",
 )
 
 
@@ -169,6 +170,7 @@ class Tag(ABC):
     hx: Type[HTMX] | None = None
     allow_unsafe_html: bool = False
     reload_on: list[str] | None = None
+    is_indicator: bool = False
 
     # TODO xml:_lang
     # TODO aria-*
@@ -220,6 +222,9 @@ class Tag(ABC):
                 setattr(self, tag_field.name, None)
 
     def __post_init__(self):
+        if self.is_indicator:
+            self.class_ += " htmx-indicator"
+        
         if self.reload_on:
             self._reset_events()
 
@@ -248,10 +253,6 @@ class Tag(ABC):
 
         else:
             context.add_root_tag(self)
-        # else:
-        #     raise RuntimeError(
-        #         "Tags can only be created within a method decorated with a @router.page or @router.component"
-        #     )
 
     @staticmethod
     def _build_attr_str_repr(key: str, value: Any) -> str:
@@ -599,7 +600,6 @@ class input(Tag):
     placeholder: str | None = None
     list: str | None = None
     multiple: bool | None = None
-    
 
     onchange: str | None = THROTTELED_RELOAD_SCRIPT
     oninput: str | None = None
