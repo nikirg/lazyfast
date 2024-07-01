@@ -1,9 +1,12 @@
 [tool.poetry]
 name = "lazyfast"
-version = "0.1.0"
-description = ""
+version = "0.1.2"
+description = "LazyFast = FastAPI + HTMX + Component-based approach + State management"
 authors = ["Nikita Irgashev <nik.irg@yandex.ru>"]
 readme = "README.md"
+homepage = "https://github.com/nikirg/lazyfast"
+repository = "https://github.com/nikirg/lazyfast"
+documentation = "https://github.com/nikirg/lazyfast"
 
 [tool.poetry.dependencies]
 python = "^3.11"
