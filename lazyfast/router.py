@@ -179,7 +179,7 @@ class LazyFastRouter(APIRouter):
         self,
         path: str,
         html_lang: str = "en",
-        head: Callable | None = None,
+        head_renderer: Callable | None = None,
         dependencies: Sequence[Depends] | None = None,
     ):
         """Register a page
@@ -187,7 +187,7 @@ class LazyFastRouter(APIRouter):
         Args:
             path (str): Fastapi path of the endpoint.
             html_lang (str, optional): Language value for "html" tag lang attribute. Defaults to "en".
-            head (Callable | None, optional): A function that render html tags to head section.
+            head_renderer (Callable | None, optional): A function that render html tags to head section.
                 For example, it can be used to render meta, link, stryle or script tags
             dependencies (Sequence[Depends], optional): List of fastapi dependencies.
 
@@ -211,8 +211,8 @@ class LazyFastRouter(APIRouter):
                     tags.script(src=self._htmx_sse)
                     tags.script(self._js_script)
 
-                    if head:
-                        head()
+                    if head_renderer:
+                        head_renderer()
 
                 session = context.get_session()
                 hx = HTMX(
@@ -241,7 +241,7 @@ class LazyFastRouter(APIRouter):
             self.component(
                 path=path,
                 dependencies=dependencies,
-                template=init_js_scripts,
+                template_renderer=init_js_scripts,
                 prefix="",
             )(PageComponent)
 
@@ -254,8 +254,8 @@ class LazyFastRouter(APIRouter):
         prefix: str | None = None,
         dependencies: Sequence[Depends] | None = None,
         reload_on: list[StateField] | None = None,
-        template: Callable | None = None,
-        preload_content: Callable | None = None,
+        template_renderer: Callable | None = None,
+        preload_renderer: Callable | None = None,
         class_: str | None = None,
     ):
         """Register a component
@@ -269,8 +269,8 @@ class LazyFastRouter(APIRouter):
             dependencies (Sequence[Depends], optional): Fastapi dependencies of the component view endpoint
             reload_on (list[StateField], optional): State fields whose changes will cause the component to reload.
                 Component id must be specified if reload_on is used. Works only if state_schema is set on router
-            template (Callable | None, optional): A function that render html tags extra to the component div
-            preload_content (Callable | None, optional): A function that preloads the component content. For example skeletons
+            template_renderer (Callable | None, optional): A function that render html tags extra to the component div
+            preload_renderer (Callable | None, optional): A function that preloads the component content. For example skeletons
             class_ (str | None, optional): The class of the component div
 
         Returns:
@@ -317,7 +317,7 @@ class LazyFastRouter(APIRouter):
             setattr(cls, "_url", url)
             setattr(cls, "_class", class_)
             setattr(cls, "_loader_class", self._loader_class)
-            setattr(cls, "_preload_content", preload_content)
+            setattr(cls, "_preload_renderer", preload_renderer)
 
             @wraps(view_func)
             async def endpoint(*args, **kwargs):
@@ -325,8 +325,8 @@ class LazyFastRouter(APIRouter):
 
                 csrf_token = context.get_session().csrf_token
 
-                if template:
-                    template(csrf_token)
+                if template_renderer:
+                    template_renderer(csrf_token)
 
                 try:
                     if is_async:

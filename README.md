@@ -4,7 +4,7 @@ LazyFast is a lightweight Python library designed for building modern web interf
 
 ## Key Features
 
-1. **Component-Based Approach**: Build web interfaces using lazy loaded components that encapsulate logic, state, and presentation. 
+1. **Component-Based Server Rendering**: Build web interfaces using lazy loaded components that encapsulate logic, state, and presentation. 
 2. **Server-Side Logic**: Handle interactions and state management on the server, reducing client-side complexity.
 3. **FastAPI Integration**: Each component or page is a FastAPI endpoint, allowing for dependency injection and other FastAPI features.
 4. **Lightweight**: The only dependencies are FastAPI for Python and HTMX for JavaScript, which can be included via CDN.
@@ -16,6 +16,10 @@ To install LazyFast, use pip:
 
 ```bash
 pip install lazyfast
+```
+or
+```bash
+poetry add lazyfast
 ```
 
 ## Quick Start
@@ -65,7 +69,10 @@ def root(name: str):
 app = FastAPI()
 app.include_router(router)
 ```
-
+If you use `uvicorn` instead as a server and want to reload on changes, use the following command:
+```bash
+uvicorn app:app --reload --timeout-graceful-shutdown 1
+```
 
 ## Documentation
 

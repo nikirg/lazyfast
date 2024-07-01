@@ -13,7 +13,7 @@ class Component(BaseModel):
     _class = None
     _id_prefix = "cid_"
     _loader_class = None
-    _preload_content: Callable | None = None
+    _preload_renderer: Callable | None = None
 
     @property
     def component_id(self) -> str:
@@ -58,7 +58,7 @@ class Component(BaseModel):
             id=container_id,
         ) as container:
             if self._preload_content:
-                self._preload_content()
+                self._preload_renderer()
 
         self._container = container
 
