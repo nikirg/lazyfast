@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import Depends, FastAPI, Request, File
+from fastapi import Depends, FastAPI, Request, UploadFile
 from pydantic import BaseModel
 
 from viewlet import ViewletRouter, BaseState, Component, ReloadRequest, tags
@@ -10,26 +10,19 @@ router = ViewletRouter()
 
 @router.component()
 class Form(Component):
-    async def view(
-        self,
-        request: Request,
-        reload_request: ReloadRequest = Depends(ReloadRequest),
-        file: bytes = File(None, alias="resume"),
-        
-    ):
+    async def view(self):
         with tags.form():
-            with tags.div(class_="box"):
-                inp = tags.input(
-                    type_="file",
-                    name="resume",
-                    id="resume",
-                    reload_on=["change"],
-                )
-                
-                submit_btn = tags.button("Submit", class_="button", type_="submit")
+            with tags.div(class_="field"):
+                with tags.div(class_="box"):
+                    inp = tags.input(
+                        type_="file",
+                        name="resume",
+                        id="resume",
+                        reload_on=["change"],
+                    )
 
-        print(file)
-
+                    if file := inp.value:
+                        tags.h1(f"File: {file.filename}")
 
 def extra_head():
     tags.title("Mega Form")

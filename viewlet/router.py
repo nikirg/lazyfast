@@ -121,8 +121,6 @@ class ViewletRouter(APIRouter):
             session: Session = request.state.session
             sid = session.id
 
-            print(f"Session {sid} connected")
-
             async def event_stream():
                 try:
                     while not (await request.is_disconnected()):
