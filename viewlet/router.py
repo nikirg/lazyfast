@@ -1,4 +1,4 @@
-import os, inspect
+import os, inspect, asyncio
 from typing import (
     Callable,
     ParamSpec,
@@ -38,6 +38,7 @@ class ViewletRouter(APIRouter):
         state_schema: Type[State] | None = None,
         session_cookie_key: str = "sid",
         session_cookie_max_age: int = 60 * 60 * 24 * 7,
+        session_delete_timeout: int = 10,
         htmx_cdn: str = "https://unpkg.com/htmx.org",
         htmx_sse: str = "https://unpkg.com/htmx.org/dist/ext/sse.js",
         loader_class: str = "__componentLoader__",
@@ -52,6 +53,7 @@ class ViewletRouter(APIRouter):
                 If you want to use state manager and reload_on triggers, set this argument.
             session_cookie_key (str, optional): Cookie key of the session. Defaults to "sid".
             session_cookie_max_age (int, optional): Max age of the session. Defaults to one week.
+            session_delete_timeout (int, optional): The duration in seconds after a client disconnects, beyond which the client's session is automatically terminated. Defaults to 10.
             htmx_cdn (str, optional): CDN of the htmx. Defaults to "https://unpkg.com/htmx.org".
             htmx_sse (str, optional): SSE extension of the htmx. Defaults to "https://unpkg.com/htmx.org/dist/ext/sse.js".
             loader_class (str, optional): CSS Class of the component htmx loader div. Defaults to "__componentLoader__".
@@ -73,6 +75,7 @@ class ViewletRouter(APIRouter):
         self._htmx_sse = htmx_sse
         self._session_cookie_key = session_cookie_key
         self._session_cookie_max_age = session_cookie_max_age
+        self._session_delete_timeout = session_delete_timeout
 
         dependencies = fastapi_router_kwargs.get("dependencies", [])
         dependencies.append(Depends(self._load_session))
@@ -127,7 +130,9 @@ class ViewletRouter(APIRouter):
                         component_id = await session.get_updated_component_id()
                         yield f"event: {component_id}\ndata: -\n\n"
                 finally:
-                    await SessionStorage.delete_session(sid)
+                    await asyncio.sleep(self._session_delete_timeout)
+                    if await request.is_disconnected():
+                        await SessionStorage.delete_session(sid)
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 

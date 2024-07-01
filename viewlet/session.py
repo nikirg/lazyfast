@@ -17,6 +17,7 @@ class ReloadRequest:
         self, request: Request, inputs: dict[str, str] = Depends(_load_form_data)
     ) -> None:
         self._method = request.method
+        self._session_id = request.state.session.id
 
         if self._method != "GET":
             csrf_token = inputs.get("csrf")
@@ -50,6 +51,10 @@ class ReloadRequest:
     @property
     def data(self) -> dict[str, str] | None:
         return dict(self._data)
+
+    @property
+    def session_id(self) -> str:
+        return self._session_id
 
 
 class Session:
