@@ -1,8 +1,8 @@
 from bs4 import BeautifulSoup
 
 from fastapi import FastAPI
-from viewlet.tags import ATTR_RENAME_MAP
-from viewlet import ViewletRouter, Component, tags
+from lazyfast.tags import ATTR_RENAME_MAP
+from lazyfast import LazyFastRouter, Component, tags
 
 inverted_attr_rename_map = {v: k for k, v in ATTR_RENAME_MAP.items()}
 
@@ -65,14 +65,14 @@ def html_to_python(html):
     return "\n".join(code)
 
 
-router = ViewletRouter()
+router = LazyFastRouter()
 
 
 @router.component()
 class Converter(Component):
     async def view(self):
         with tags.div(class_="container"):
-            tags.h1("HTML to Viewlet", class_="title")
+            tags.h1("HTML to LazyFast", class_="title")
             with tags.form():
                 with tags.div(class_="field"):
                     text_area = tags.textarea(class_="textarea", name="raw_html")
@@ -80,9 +80,9 @@ class Converter(Component):
                     tags.button("Convert", class_="button", type_="submit")
 
             if raw_html := text_area.content:
-                viewlet_code = html_to_python(raw_html)
+                lazyfast_code = html_to_python(raw_html)
                 tags.div(
-                    f"<pre>{viewlet_code}</pre>", class_="content", allow_unsafe_html=True
+                    f"<pre>{lazyfast_code}</pre>", class_="content", allow_unsafe_html=True
                 )
 
 

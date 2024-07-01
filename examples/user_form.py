@@ -2,8 +2,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
-from viewlet import ViewletRouter, tags, BaseState
-from viewlet.component import Component
+from lazyfast import LazyFastRouter, tags, BaseState, Component
 
 GROUP_TYPE = Literal["internal", "external"]
 GROUPS: list[str] = ["internal", "external"]
@@ -34,7 +33,7 @@ async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
     return [user for user in state.users if user.group == state.group]
 
 
-router = ViewletRouter(state_schema=State)
+router = LazyFastRouter(state_schema=State)
 
 
 @router.component(id="userList", reload_on=[State.group, State.users])
@@ -126,9 +125,9 @@ class UserForm(Component):
                     type_="button",
                     dataset=dataset,
                 )
-                
+
                 trigger = submit_btn.trigger
-                #tags.h1(trigger)
+                # tags.h1(trigger)
 
                 if trigger:
                     user = User(

@@ -4,8 +4,7 @@ import markdown
 from dataclasses import dataclass
 
 from fastapi import BackgroundTasks, FastAPI, Depends
-from viewlet import ViewletRouter, tags, BaseState
-from viewlet.component import Component
+from lazyfast import LazyFastRouter, tags, BaseState, Component
 
 
 STYLE = """
@@ -126,7 +125,7 @@ class State(BaseState):
     is_awaiting_response: bool = False
 
 
-router = ViewletRouter(state_schema=State)
+router = LazyFastRouter(state_schema=State)
 
 
 @router.component()
@@ -141,7 +140,7 @@ class ChatConfig(Component):
                     name="api_token",
                     type_="text",
                     placeholder="Enter your OpenAI API token",
-                    reload_on=["change"]
+                    reload_on=["change"],
                 )
 
                 if api_token_inp.trigger:
@@ -156,7 +155,7 @@ class ChatConfig(Component):
                         id="edit_api_token",
                         class_="help is-primary",
                         style="cursor: pointer;",
-                        reload_on=["click"]
+                        reload_on=["click"],
                     )
 
                     api_token_inp.value = state.api_token

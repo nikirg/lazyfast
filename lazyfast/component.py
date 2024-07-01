@@ -1,10 +1,10 @@
 from typing import Callable
 from pydantic import BaseModel
 
-from viewlet.htmx import HTMX
-from viewlet import tags
-from viewlet import context
-from viewlet.utils import url_join
+from lazyfast.htmx import HTMX
+from lazyfast import tags
+from lazyfast import context
+from lazyfast.utils import url_join
 
 
 class Component(BaseModel):

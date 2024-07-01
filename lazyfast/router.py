@@ -11,15 +11,15 @@ from functools import wraps
 from fastapi import Depends, APIRouter, Request, Response, params
 from fastapi.responses import HTMLResponse, StreamingResponse
 
-from viewlet import context, tags
-from viewlet.htmx import HTMX
-from viewlet.component import Component
-from viewlet.state import State, StateField
-from viewlet.session import ReloadRequest, Session, SessionStorage
-from viewlet.utils import url_join
+from lazyfast import context, tags
+from lazyfast.htmx import HTMX
+from lazyfast.component import Component
+from lazyfast.state import State, StateField
+from lazyfast.session import ReloadRequest, Session, SessionStorage
+from lazyfast.utils import url_join
 
 
-__all__ = ["ViewletRouter"]
+__all__ = ["LazyFastRouter"]
 
 
 T = TypeVar("T")
@@ -32,7 +32,7 @@ with open(
     JS_SCRIPT_TEMPLATE = file.read()
 
 
-class ViewletRouter(APIRouter):
+class LazyFastRouter(APIRouter):
     def __init__(
         self,
         state_schema: Type[State] | None = None,
@@ -42,12 +42,12 @@ class ViewletRouter(APIRouter):
         htmx_cdn: str = "https://unpkg.com/htmx.org",
         htmx_sse: str = "https://unpkg.com/htmx.org/dist/ext/sse.js",
         loader_class: str = "__componentLoader__",
-        loader_route_prefix: str = "/__viewlet__",
+        loader_route_prefix: str = "/__lazyfast__",
         sse_endpoint_dependencies: Sequence[params.Depends] | None = None,
         **fastapi_router_kwargs,
     ):
         """
-        Viewlet Router
+        LazyFast Router
 
         This class provides routing functionalities for your web application, integrating state management, session handling, and HTMX support.
 
@@ -61,14 +61,14 @@ class ViewletRouter(APIRouter):
             htmx_cdn (str, optional): URL of the HTMX CDN. Defaults to "https://unpkg.com/htmx.org".
             htmx_sse (str, optional): URL of the HTMX SSE extension. Defaults to "https://unpkg.com/htmx.org/dist/ext/sse.js".
             loader_class (str, optional): CSS class for the component HTMX loader div. Defaults to "__componentLoader__".
-            loader_route_prefix (str, optional): Prefix for the loader request route. Defaults to "/__viewlet__".
+            loader_route_prefix (str, optional): Prefix for the loader request route. Defaults to "/__lazyfast__".
             sse_endpoint_dependencies (Sequence[params.Depends], optional): Dependencies for the SSE endpoint. Defaults to None.
 
         Raises:
             TypeError: Raised if state_schema is not a subclass of State.
 
         Example:
-            >>> router = ViewletRouter(state_schema=State)
+            >>> router = LazyFastRouter(state_schema=State)
             >>> @router.page("/home")
             ... def home():
             ...     pass

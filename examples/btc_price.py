@@ -1,8 +1,8 @@
-import asyncio
+import asyncio, requests
 from fastapi import BackgroundTasks, Depends, FastAPI
-from viewlet import ViewletRouter, tags, BaseState
-from viewlet.component import Component
-import requests
+from lazyfast import LazyFastRouter, Component, tags, BaseState
+
+
 
 
 def get_btc_price() -> float:
@@ -19,7 +19,7 @@ class State(BaseState):
     btc_price: float | None = None
 
 
-router = ViewletRouter(state_schema=State)
+router = LazyFastRouter(state_schema=State)
 
 
 @router.component(id="currency", reload_on=[State.btc_price])

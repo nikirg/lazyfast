@@ -3,9 +3,9 @@ from typing import Type
 
 from fastapi import Depends, HTTPException, Request
 
-from viewlet.component import Component
-from viewlet.state import State
-from viewlet.utils import generate_csrf_token
+from lazyfast.component import Component
+from lazyfast.state import State
+from lazyfast.utils import generate_csrf_token
 
 
 async def _load_form_data(request: Request) -> dict[str, str]:

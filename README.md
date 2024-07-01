@@ -1,6 +1,6 @@
-# Viewlet
+# LazyFast
 
-Viewlet is a lightweight Python library designed for building modern web interfaces using a component-based approach. It enables writing page logic on the server side in Python, integrating seamlessly with FastAPI. With Viewlet, interactive elements like inputs, buttons, and selects trigger component reloads that occur on the server, updating the component's state dynamically.
+LazyFast is a lightweight Python library designed for building modern web interfaces using a component-based approach. It enables writing page logic on the server side in Python, integrating seamlessly with FastAPI. With LazyFast, interactive elements like inputs, buttons, and selects trigger component reloads that occur on the server, updating the component's state dynamically.
 
 ## Key Features
 
@@ -12,23 +12,23 @@ Viewlet is a lightweight Python library designed for building modern web interfa
 
 ## Installation
 
-To install Viewlet, use pip:
+To install LazyFast, use pip:
 
 ```bash
-pip install viewlet
+pip install lazyfast
 ```
 
 ## Quick Start
 
-Here's an example application to demonstrate how Viewlet works:
+Here's an example application to demonstrate how LazyFast works:
 
 ```python
 from fastapi import FastAPI, Request
-from viewlet import ViewletRouter, Component, tags
+from lazyfast import LazyFastRouter, Component, tags
 
 
-# ViewletRouter inherits from FastAPI's APIRouter
-router = ViewletRouter()
+# LazyFastRouter inherits from FastAPI's APIRouter
+router = LazyFastRouter()
 
 # Define a lazy-loaded HTML component powered by HTMX
 @router.component()
@@ -74,4 +74,4 @@ Coming soon.
 
 ## License
 
-Viewlet is licensed under the [MIT License](https://github.com/nikirg/renderable/blob/main/LICENSE).
+LazyFast is licensed under the [MIT License](https://github.com/nikirg/lazyfast/blob/main/LICENSE).

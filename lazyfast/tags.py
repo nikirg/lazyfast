@@ -3,8 +3,8 @@ import html as html_utils
 from dataclasses import dataclass, field, fields
 from typing import Any, Literal, Type
 
-from viewlet import context
-from viewlet.htmx import HTMX
+from lazyfast import context
+from lazyfast.htmx import HTMX
 
 RELOAD_SCRIPT = "reloadComponent(this, event)"
 THROTTELED_RELOAD_SCRIPT = "throttledReloadComponent(this, event)"

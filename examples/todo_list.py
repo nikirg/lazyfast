@@ -2,7 +2,7 @@ from datetime import datetime
 from fastapi import Depends, FastAPI, Request
 from pydantic import BaseModel
 
-from viewlet import ViewletRouter, BaseState, Component, ReloadRequest, tags
+from lazyfast import LazyFastRouter, BaseState, Component, ReloadRequest, tags
 
 
 class Task(BaseModel):
@@ -18,7 +18,7 @@ class State(BaseState):
         self.tasks = [task for task in self.tasks if task.id != task_id]
 
 
-router = ViewletRouter(state_schema=State)
+router = LazyFastRouter(state_schema=State)
 
 
 @router.component()

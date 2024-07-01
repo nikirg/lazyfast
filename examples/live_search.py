@@ -1,6 +1,5 @@
 from fastapi import FastAPI
-from viewlet import ViewletRouter, tags
-from viewlet.component import Component
+from lazyfast import LazyFastRouter, tags, Component
 
 
 def search_cities(q: str) -> list[str]:
@@ -25,7 +24,7 @@ def search_cities(q: str) -> list[str]:
     return [city for city in cities if q.lower() in city.lower()]
 
 
-router = ViewletRouter()
+router = LazyFastRouter()
 
 
 @router.component()

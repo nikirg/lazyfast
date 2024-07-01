@@ -2,10 +2,10 @@ from datetime import datetime
 from fastapi import Depends, FastAPI, Request, UploadFile
 from pydantic import BaseModel
 
-from viewlet import ViewletRouter, BaseState, Component, ReloadRequest, tags
+from lazyfast import LazyFastRouter, BaseState, Component, ReloadRequest, tags
 
 
-router = ViewletRouter()
+router = LazyFastRouter()
 
 
 @router.component()
