@@ -1,8 +1,8 @@
 from datetime import datetime
 from fastapi import Depends, FastAPI, Request
 from pydantic import BaseModel
-from viewlet import ViewletRouter, BaseState, tags
-from viewlet.component import Component
+
+from viewlet import ViewletRouter, BaseState, Component, ReloadRequest, tags
 
 
 class Task(BaseModel):
@@ -79,7 +79,7 @@ def extra_head():
 
 
 @router.page("/", head=extra_head)
-def root():            
+def root():
     with tags.div(class_="container mt-6"):
         TodoList()
 

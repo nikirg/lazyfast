@@ -9,7 +9,7 @@ class StackManager(Generic[T]):
 
     def __init__(self, name: str) -> None:
         self._contex_var = ContextVar(name, default=[])
-        
+
     @property
     def stack(self) -> list[T]:
         return self._contex_var.get()
@@ -38,36 +38,24 @@ class StackManager(Generic[T]):
 
 
 _root_tags = ContextVar("root_tags", default=[])
-_inputs = ContextVar("inputs", default={})
 _session = ContextVar("session", default=None)
-_method = ContextVar("method", default="")
+
 
 def get_root_tags():
     return _root_tags.get()
 
+
 def clear_root_tags():
     _root_tags.set([])
-    
+
+
 def add_root_tag(tag):
     _root_tags.get().append(tag)
 
 
-def set_inputs(inputs):
-    _inputs.set(inputs)
-    
-def get_inputs():
-    return _inputs.get()
-
-
 def set_session(session: dict[str, Any]):
     _session.set(session)
-    
+
+
 def get_session() -> dict[str, Any]:
     return _session.get()
-
-
-def set_method(method: str):
-    _method.set(method)
-    
-def get_method() -> str:
-    return _method.get()

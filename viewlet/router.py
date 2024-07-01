@@ -1,4 +1,4 @@
-import os, hmac, hashlib, inspect, base64
+import os, inspect
 from typing import (
     Callable,
     ParamSpec,
@@ -8,15 +8,15 @@ from typing import (
 )
 from functools import wraps
 
-from fastapi import Depends, APIRouter, HTTPException, Request, Response, params
+from fastapi import Depends, APIRouter, Request, Response, params
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from viewlet import context, tags
 from viewlet.htmx import HTMX
 from viewlet.component import Component
 from viewlet.state import State, StateField
-from viewlet.session import Session, SessionStorage
-from viewlet.utils import generate_csrf_token, url_join
+from viewlet.session import ReloadRequest, Session, SessionStorage
+from viewlet.utils import url_join
 
 
 __all__ = ["ViewletRouter"]
@@ -75,7 +75,8 @@ class ViewletRouter(APIRouter):
         self._session_cookie_max_age = session_cookie_max_age
 
         dependencies = fastapi_router_kwargs.get("dependencies", [])
-        dependencies.append(Depends(self._get_or_create_session))
+        dependencies.append(Depends(self._load_session))
+        dependencies.append(Depends(ReloadRequest))
         fastapi_router_kwargs["dependencies"] = dependencies
 
         self._js_script = JS_SCRIPT_TEMPLATE.replace(
@@ -87,19 +88,7 @@ class ViewletRouter(APIRouter):
         self._state_schema = state_schema
         self._register_sse_endpoint(sse_endpoint_dependencies)
 
-    @staticmethod
-    async def _load_inputs(request: Request):
-        inputs = dict(await request.form())
-        if request.method != "GET":
-            csrf_token = inputs.get("csrf")
-
-            if csrf_token != request.state.session.csrf_token:
-                raise HTTPException(status_code=403, detail="CSRF token is invalid")
-        context.set_inputs(inputs)
-
-    async def _get_or_create_session(
-        self, request: Request, response: Response
-    ) -> Session:
+    async def _load_session(self, request: Request, response: Response) -> Session:
         session_id = request.cookies.get(self._session_cookie_key)
         state = self._state_schema() if self._state_schema else None
         session = None
@@ -107,13 +96,11 @@ class ViewletRouter(APIRouter):
         if session_id:
             session = await SessionStorage.get_session(session_id)
             if not session:
-                session = await SessionStorage.create_session(
-                    state, generate_csrf_token()
-                )
+                session = await SessionStorage.create_session(state)
         else:
-            session = await SessionStorage.create_session(state, generate_csrf_token())
+            session = await SessionStorage.create_session(state)
 
-        session.set_current_path = request.url.path
+        session.set_current_path(request.url.path)
         request.state.session = session
         context.set_session(session)
 
@@ -290,9 +277,6 @@ class ViewletRouter(APIRouter):
             ...     async def view(self):
             ...         tags.p("Hello World")
         """
-        deps = [Depends(self._load_inputs)]
-        if dependencies:
-            deps.extend(dependencies)
 
         def decorator(cls: Type[T]) -> Type[T]:
             if not isinstance(cls, type(Component)):
@@ -351,7 +335,7 @@ class ViewletRouter(APIRouter):
             self.add_api_route(
                 url,
                 endpoint,
-                dependencies=deps,
+                dependencies=dependencies,
                 response_class=HTMLResponse,
                 methods=["GET", "POST"],
                 include_in_schema=True,

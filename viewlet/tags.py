@@ -181,11 +181,11 @@ class Tag(ABC):
         if not self.id:
             raise ValueError("Trigger checking requires tag id")
 
-        inputs = context.get_inputs()
+        session = context.get_session()
 
-        if tid := inputs.get("__tid__"):
+        if tid := session.reload_request.trigger_id:
             if tid == self.id:
-                return inputs.get("__evt__")
+                return session.reload_request.trigger_event
 
     @property
     def tag_name(self) -> str:
@@ -606,7 +606,8 @@ class input(Tag):
         if self.value and not self.name:
             raise ValueError("Name attribute is required if value is set")
 
-        inputs = context.get_inputs()
+        session = context.get_session()
+        inputs = session.reload_request.data
 
         self.value = inputs.get(self.name, self.value)
 
@@ -656,7 +657,8 @@ class select(Tag):
     def value(self) -> Any:
         if not self.name:
             raise ValueError("Name attribute is required for getting value")
-        inputs = context.get_inputs()
+        session = context.get_session()
+        inputs = session.reload_request.data
         return inputs.get(self.name)
 
 
@@ -677,7 +679,8 @@ class textarea(Tag):
     oninput: str | None = RELOAD_SCRIPT
 
     def __post_init__(self):
-        inputs = context.get_inputs()
+        session = context.get_session()
+        inputs = session.reload_request.data
         self.content = inputs.get(self.name, self.content)
         super(textarea, self).__post_init__()
 
