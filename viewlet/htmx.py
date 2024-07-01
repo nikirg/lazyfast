@@ -69,4 +69,5 @@ class HTMX:
             ("hx-headers", json.dumps(self._headers) if self._headers else None),
             ("sse-connect", self._sse_connect),
             ("sse-swap", self._sse_swap),
+            ("hx-encode", "multipart/form-data"),
         ]

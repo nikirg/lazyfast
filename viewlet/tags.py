@@ -225,7 +225,7 @@ class Tag(ABC):
 
             for event in self.reload_on:
                 if not event.startswith("on"):
-                    event = "on" + self.reload_on
+                    event = "on" + event
 
                 if event in (
                     "oninput",
@@ -598,6 +598,8 @@ class input(Tag):
     value: str | None = None
     placeholder: str | None = None
     list: str | None = None
+    multiple: bool | None = None
+    
 
     onchange: str | None = THROTTELED_RELOAD_SCRIPT
     oninput: str | None = None

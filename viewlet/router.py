@@ -118,16 +118,18 @@ class ViewletRouter(APIRouter):
         self, dependencies: Sequence[params.Depends] | None = None
     ):
         async def sse_endpoint(request: Request):
-            async def event_stream():
-                session: Session = request.state.session
-                sid = session.id
+            session: Session = request.state.session
+            sid = session.id
 
-                while True:
-                    if await request.is_disconnected():
-                        await SessionStorage.delete_session(sid)
-                        break
-                    component_id = await session.get_updated_component_id()
-                    yield f"event: {component_id}\ndata: -\n\n"
+            print(f"Session {sid} connected")
+
+            async def event_stream():
+                try:
+                    while not (await request.is_disconnected()):
+                        component_id = await session.get_updated_component_id()
+                        yield f"event: {component_id}\ndata: -\n\n"
+                finally:
+                    await SessionStorage.delete_session(sid)
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 
