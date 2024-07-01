@@ -11,13 +11,8 @@ documentation = "https://github.com/nikirg/lazyfast"
 [tool.poetry.dependencies]
 python = "^3.11"
 fastapi = "^0.105.0"
-uvicorn = "^0.24.0.post1"
 pydantic = "^2.6.4"
 python-multipart = "^0.0.9"
-requests = "^2.32.3"
-aiohttp = "^3.9.5"
-markdown = "^3.6"
-beautifulsoup4 = "^4.12.3"
 
 
 [build-system]
