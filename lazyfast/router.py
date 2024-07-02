@@ -318,6 +318,7 @@ class LazyFastRouter(APIRouter):
             setattr(cls, "_class", class_)
             setattr(cls, "_loader_class", self._loader_class)
             setattr(cls, "_preload_renderer", preload_renderer)
+            setattr(cls, "_loader_route_prefix", self._loader_route_prefix)
 
             @wraps(view_func)
             async def endpoint(*args, **kwargs):

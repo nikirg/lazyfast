@@ -14,6 +14,7 @@ class Component(BaseModel):
     _id_prefix = "cid_"
     _loader_class = None
     _preload_renderer: Callable | None = None
+    _loader_route_prefix = None
 
     @property
     def component_id(self) -> str:
@@ -41,10 +42,11 @@ class Component(BaseModel):
         component_id = self.component_id
         container_id = self.container_id
 
-        url = url_join(
-            session.current_path, self._url, query_params={"__cid__": component_id}
-        )
+        prefix = session.current_path.split(self._loader_route_prefix)[0]
 
+        url = url_join(
+            prefix, self._url, query_params={"__cid__": component_id}
+        )
         htmx = HTMX(
             url=url,
             method="post",
