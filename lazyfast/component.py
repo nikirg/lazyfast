@@ -57,7 +57,7 @@ class Component(BaseModel):
             hx=htmx,
             id=container_id,
         ) as container:
-            if self._preload_content:
+            if self._preload_renderer:
                 self._preload_renderer()
 
         self._container = container
