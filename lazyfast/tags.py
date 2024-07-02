@@ -78,6 +78,7 @@ __all__ = [
     "strong",
     "style",
     "details",
+    "embed"
 ]
 
 _lang = Literal[
@@ -785,3 +786,11 @@ class aside(Tag):
 @dataclass(slots=True)
 class details(Tag):
     open: bool | None = None
+
+
+@dataclass(slots=True)
+class embed(Tag):
+    src: str | None = None
+    type: str | None = None
+    width: int | None = None
+    height: int | None = None
