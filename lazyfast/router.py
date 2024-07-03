@@ -16,7 +16,7 @@ from lazyfast.htmx import HTMX
 from lazyfast.component import Component
 from lazyfast.state import State, StateField
 from lazyfast.session import ReloadRequest, Session, SessionStorage
-from lazyfast.utils import url_join
+from lazyfast.utils import url_join, extract_pattern
 
 
 __all__ = ["LazyFastRouter"]
@@ -107,7 +107,7 @@ class LazyFastRouter(APIRouter):
         else:
             session = await SessionStorage.create_session(state)
 
-        session.set_current_path(request.url.path)
+        session.set_current_path(extract_pattern(request.url.path, self.prefix))
         request.state.session = session
         context.set_session(session)
 
@@ -237,12 +237,11 @@ class LazyFastRouter(APIRouter):
                     pass
 
             setattr(PageComponent, "view", func)
-
+            
             self.component(
                 path=path,
                 dependencies=dependencies,
                 template_renderer=init_js_scripts,
-                prefix="/",
             )(PageComponent)
 
         return decorator
@@ -299,10 +298,10 @@ class LazyFastRouter(APIRouter):
             is_async = inspect.iscoroutinefunction(view_func)
             view_func = self._replace_self(view_func)
             url = url_join(
-                self._loader_route_prefix if prefix is None else prefix,
-                path or cls.__name__,
+                prefix or ("/" if path != "/" else ""),
+                path or url_join(self._loader_route_prefix, cls.__name__),
             )
-
+   
             if reload_on:
                 if not id:
                     raise ValueError("id must be specified if reload_on is used")
