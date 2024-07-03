@@ -42,11 +42,12 @@ class Component(BaseModel):
         component_id = self.component_id
         container_id = self.container_id
 
-        prefix = session.current_path.split(self._loader_route_prefix)[0]
+        if session.current_path:
+            prefix = session.current_path.split(self._loader_route_prefix)[0]
+        else:
+            prefix = "/"
 
-        url = url_join(
-            prefix, self._url, query_params={"__cid__": component_id}
-        )
+        url = url_join(prefix, self._url, query_params={"__cid__": component_id})
         htmx = HTMX(
             url=url,
             method="post",
@@ -63,5 +64,3 @@ class Component(BaseModel):
                 self._preload_renderer()
 
         self._container = container
-
-

@@ -27,7 +27,13 @@ def generate_csrf_token() -> str:
 
 
 def extract_pattern(input_string: str, pattern: str) -> str | None:
-    escaped_pattern = re.escape(pattern).replace(r"\{", "{").replace(r"\}", "}")
+    escaped_pattern = (
+        re.escape(pattern)
+        .replace(r"\{", "{")
+        .replace(r"\}", "}")
+        .replace(r"{survey_id}", "([^/]+)")
+    )
     match = re.match(f"^{escaped_pattern}", input_string)
     if match:
         return match.group(0)
+    return None
