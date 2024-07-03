@@ -242,7 +242,7 @@ class LazyFastRouter(APIRouter):
                 path=path,
                 dependencies=dependencies,
                 template_renderer=init_js_scripts,
-                prefix="",
+                prefix="/",
             )(PageComponent)
 
         return decorator
