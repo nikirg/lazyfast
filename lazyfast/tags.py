@@ -78,7 +78,7 @@ __all__ = [
     "strong",
     "style",
     "details",
-    "embed"
+    "embed",
 ]
 
 _lang = Literal[
@@ -174,7 +174,17 @@ class Tag(ABC):
     is_indicator: bool = False
 
     # TODO xml:_lang
-    # TODO aria-*
+    aria_label: str | None = None
+    aria_labelledby: str | None = None
+    aria_describedby: str | None = None
+    aria_hidden: bool | None = None
+    aria_expanded: bool | None = None
+    aria_controls: str | None = None
+    aria_live: Literal["off", "polite", "assertive"] | None = None
+    aria_current: Literal["page", "step", "location", "date", "time", "true"] | None = (
+        None
+    )
+    aria_pressed: bool | None = None
 
     _self_closing: bool = field(default=False, init=False)
     _children: list[Type["Tag"]] = field(default_factory=list)
@@ -225,7 +235,7 @@ class Tag(ABC):
     def __post_init__(self):
         if self.is_indicator:
             self.class_ += " htmx-indicator"
-        
+
         if self.reload_on:
             self._reset_events()
 

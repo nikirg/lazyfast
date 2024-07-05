@@ -1,17 +1,18 @@
+from collections import deque
 from contextvars import ContextVar
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, Deque
 
 T = TypeVar("T")
 
 
 class StackManager(Generic[T]):
-    _contex_var: ContextVar
+    _contex_var: ContextVar[Deque[T]]
 
     def __init__(self, name: str) -> None:
-        self._contex_var = ContextVar(name, default=[])
+        self._contex_var = ContextVar(name, default=deque())
 
     @property
-    def stack(self) -> list[T]:
+    def stack(self) -> Deque[T]:
         return self._contex_var.get()
 
     def append(self, elm: T):
@@ -20,21 +21,23 @@ class StackManager(Generic[T]):
         self._contex_var.set(elms)
 
     def get_last(self) -> T | None:
-        if elms := self._contex_var.get():
-            return elms[-1]
+        elms = self._contex_var.get()
+        return elms[-1] if elms else None
 
     def update_last(self, elm: T):
-        if elms := self._contex_var.get():
+        elms = self._contex_var.get()
+        if elms:
             elms[-1] = elm
             self._contex_var.set(elms)
 
     def pop_last(self):
-        if elms := self._contex_var.get():
+        elms = self._contex_var.get()
+        if elms:
             elms.pop()
             self._contex_var.set(elms)
 
     def clear(self):
-        self._contex_var.set([])
+        self._contex_var.set(deque())
 
 
 _root_tags = ContextVar("root_tags", default=[])

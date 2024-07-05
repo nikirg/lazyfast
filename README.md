@@ -37,23 +37,12 @@ router = LazyFastRouter()
 # Define a lazy-loaded HTML component powered by HTMX
 @router.component()
 class MyComponent(Component):
-    # Define a state field to store the component's value
-    # We can pass this value from parent page or component
-    # Or we can use it as local component state
     title: str
 
-    # Override the view method to define HTML rendering logic
-    # The view method is a FastAPI endpoint supporting dependency injection
     async def view(self, request: Request) -> None:
-
-        # Use familiar HTML tags as Python objects with standard HTML attributes
-        # The first parameter is the inner HTML of the tag
         tags.h1(self.title, class_="my-class")
 
-        # Use the "with" operator to add additional HTML tags to the inner HTML
         with tags.div(style="border: 1px solid black"):
-
-            # This span is a child of the div
             tags.span(request.headers)
 
 # Initialize the page dependencies for component rendering
@@ -61,8 +50,6 @@ class MyComponent(Component):
 @router.page("/{name}")
 def root(name: str):
     with tags.div(class_="container mt-6"):
-
-        # Initialize this component to embed an HTMX div and trigger the view method only after the div is rendered
         MyComponent(title=f"Hello, World from {name}")
 
 # Embed the router in a FastAPI app
