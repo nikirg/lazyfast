@@ -37,3 +37,42 @@ def extract_pattern(input_string: str, pattern: str) -> str | None:
     if match:
         return match.group(0)
     return None
+
+
+def check_version():
+    package_name = "lazyfast"
+    current_version = pkg_resources.get_distribution(package_name).version
+
+    def print_message_in_box(message: str):
+        lines = message.split("\n")
+        max_length = max(len(line) for line in lines)
+        border = "+" + "-" * (max_length + 2) + "+"
+
+        print(border)
+        for line in lines:
+            print(f"| {line.ljust(max_length)} |")
+        print(border)
+
+    url = f"https://pypi.org/pypi/{package_name}/json"
+    try:
+        with urllib.request.urlopen(url) as response:
+            data = response.read()
+            pypi_data = json.loads(data.decode("utf-8"))
+            latest_version = pypi_data["info"]["version"]
+
+            if current_version != latest_version:
+                message = (
+                    f"A new version of {package_name} is available: {latest_version}\n"
+                    f"Your current version: {current_version}"
+                )
+            else:
+                message = (
+                    f"You have the latest version of {package_name}: {current_version}"
+                )
+
+            print_message_in_box(message)
+    except urllib.error.URLError:
+        print_message_in_box("Failed to fetch the latest version from PyPI")
+
+
+check_version()
