@@ -1,5 +1,8 @@
 import os, re, base64, hashlib, hmac
+from typing import Callable
 from urllib.parse import urlencode
+
+import pkg_resources
 
 
 def url_join(*args, query_params: dict | None = None) -> str:
@@ -37,6 +40,11 @@ def extract_pattern(input_string: str, pattern: str) -> str | None:
     if match:
         return match.group(0)
     return None
+
+
+def get_function_id(func: Callable) -> str:
+    unique_string = f"{func.__name__}.{func.__module__}"
+    return hashlib.md5(unique_string.encode()).hexdigest()
 
 
 def check_version():

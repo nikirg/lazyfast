@@ -62,8 +62,7 @@ uvicorn app:app --reload --timeout-graceful-shutdown 1
 ```
 
 ## Documentation
-
-Coming soon.
+Documentation can be found [here](https://nikirg.github.io/lazyfast/DOCS.md).
 
 
 ## License

@@ -297,6 +297,8 @@ class Tag(ABC):
         return "".join([tag.html() for tag in self._children])
 
     def html(self) -> str:
+        # pass
+        
         attrs = self._get_attrs()
         if attrs:
             attrs = " " + attrs
