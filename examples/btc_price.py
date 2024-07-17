@@ -29,7 +29,7 @@ class Currency(Component):
 def head_renderer():
     tags.title("Currency")
     tags.link(
-        rel="stylesheet",
+        rel="stylesheet", 
         href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css",
     )
 
