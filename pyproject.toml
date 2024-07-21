@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lazyfast"
-version = "0.1.13"
+version = "0.1.14"
 description = "LazyFast = FastAPI + HTMX + Component-based approach + State management"
 authors = ["Nikita Irgashev <nik.irg@yandex.ru>"]
 readme = "README.md"
