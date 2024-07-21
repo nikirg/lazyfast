@@ -33,6 +33,7 @@ __all__ = [
     "div",
     "span",
     "p",
+    "b",
     "ul",
     "ol",
     "li",
@@ -330,6 +331,9 @@ class span(Tag):
 class p(Tag):
     pass
 
+@dataclass(slots=True)
+class b(Tag):
+    pass
 
 @dataclass(slots=True)
 class ul(Tag):
