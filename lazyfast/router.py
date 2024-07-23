@@ -40,7 +40,7 @@ class LazyFastRouter(APIRouter):
         session_cookie_max_age: int = 60 * 60 * 24 * 7,
         session_delete_timeout: int = 10,
         htmx_cdn: str = "https://unpkg.com/htmx.org",
-        htmx_sse: str = "https://unpkg.com/htmx.org/dist/ext/sse.js",
+        htmx_sse: str = "https://unpkg.com/htmx-ext-sse",
         loader_class: str = "__componentLoader__",
         loader_route_prefix: str = "/__lazyfast__",
         sse_endpoint_dependencies: Sequence[params.Depends] | None = None,
