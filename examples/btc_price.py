@@ -1,4 +1,5 @@
 import asyncio, requests
+import random
 from fastapi import BackgroundTasks, Depends, FastAPI
 from lazyfast import LazyFastRouter, Component, tags, BaseState
 
@@ -18,12 +19,17 @@ class State(BaseState):
 router = LazyFastRouter(state_schema=State)
 
 
-@router.component(id="currency", reload_on=[State.btc_price])
+#@router.component(id="currency", reload_on=[State.btc_price])
+@router.component()
 class Currency(Component):
     async def view(self, state: State = Depends(State.load)):
         with tags.div(class_="box"):
             with tags.div(class_="content"):
-                tags.h1(f"BTC: ${state.btc_price}")
+                tags.h1(f"BTC: ${random.randint(100, 1000)}")
+                #tags.h1(f"BTC: ${state.btc_price}")
+                
+        await asyncio.sleep(1)
+        await self.reload()
 
 
 def head_renderer():
@@ -42,10 +48,11 @@ def root(background_tasks: BackgroundTasks, state: State = Depends(State.load)):
     async def price_monitoring():
         while True:
             async with state:
-                state.btc_price = get_btc_price()
-            await asyncio.sleep(1)
+                #state.btc_price = get_btc_price()
+                state.btc_price = random.randint(100, 1000)
+            await asyncio.sleep(.1)
 
-    background_tasks.add_task(price_monitoring)
+    #background_tasks.add_task(price_monitoring)
 
 
 app = FastAPI()

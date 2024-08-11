@@ -80,6 +80,8 @@ __all__ = [
     "style",
     "details",
     "embed",
+    "hr",
+    "progress",
 ]
 
 _lang = Literal[
@@ -617,6 +619,9 @@ class input(Tag):
     placeholder: str | None = None
     list: str | None = None
     multiple: bool | None = None
+    min: str | None = None
+    max: str | None = None
+    step: str | None = None
 
     onchange: str | None = THROTTELED_RELOAD_SCRIPT
     oninput: str | None = None
@@ -810,3 +815,13 @@ class embed(Tag):
     type: str | None = None
     width: int | None = None
     height: int | None = None
+
+@dataclass(slots=True)
+class progress(Tag):
+    max: int | None = None
+    value: int | None = None
+    
+    
+@dataclass(slots=True)
+class hr(Tag):
+    pass
