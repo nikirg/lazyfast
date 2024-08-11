@@ -45,6 +45,7 @@ class LazyFastRouter(APIRouter):
         loader_route_prefix: str = "/__lazyfast__",
         sse_endpoint_dependencies: Sequence[params.Depends] | None = None,
         sse_tick_interval: int = .5,
+        csrf_input_id: str = "csrf",
         **fastapi_router_kwargs,
     ):
         """
@@ -65,6 +66,7 @@ class LazyFastRouter(APIRouter):
             loader_route_prefix (str, optional): Prefix for the loader request route. Defaults to "/__lazyfast__".
             sse_endpoint_dependencies (Sequence[params.Depends], optional): Dependencies for the SSE endpoint. Defaults to None.
             ssse_tick_interval (int, optional): Interval in seconds for the SSE event loop tick. Defaults to .5.
+            csrf_input_id (str, optional): ID of the CSRF input tag. Defaults to "csrf".
 
         Raises:
             TypeError: Raised if state_schema is not a subclass of State.
@@ -83,6 +85,7 @@ class LazyFastRouter(APIRouter):
         self._session_cookie_max_age = session_cookie_max_age
         self._session_delete_timeout = session_delete_timeout
         self._sse_tick_interval = sse_tick_interval
+        self._csrf_input_id = csrf_input_id
 
         dependencies = fastapi_router_kwargs.get("dependencies", [])
         dependencies.append(Depends(self._load_session))
@@ -228,7 +231,7 @@ class LazyFastRouter(APIRouter):
 
                 with tags.body(hx=hx):
                     tags.input(
-                        id="csrf",
+                        id=self._csrf_input_id,
                         type_="hidden",
                         value=csrf_token,
                         name="csrf",
@@ -322,6 +325,7 @@ class LazyFastRouter(APIRouter):
             setattr(cls, "_loader_class", self._loader_class)
             setattr(cls, "_preload_renderer", preload_renderer)
             setattr(cls, "_loader_route_prefix", self._loader_route_prefix)
+            setattr(cls, "_csrf_input_id", self._csrf_input_id)
 
             @wraps(view_func)
             async def endpoint(*args, **kwargs):

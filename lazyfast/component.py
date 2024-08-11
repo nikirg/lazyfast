@@ -15,6 +15,7 @@ class Component(BaseModel):
     _loader_class = None
     _preload_renderer: Callable | None = None
     _loader_route_prefix = None
+    _csrf_input_id = None
 
     @property
     def component_id(self) -> str:
@@ -51,7 +52,7 @@ class Component(BaseModel):
         htmx = HTMX(
             url=url,
             method="post",
-            include=f"#csrf, #{container_id}",
+            include=f"#{self._csrf_input_id}, #{container_id}",
             trigger=f"load, {container_id}, sse:{container_id}",
         )
 
