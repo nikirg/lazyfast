@@ -269,9 +269,12 @@ class Tag(ABC):
             context.add_root_tag(self)
 
     @staticmethod
-    def _build_attr_str_repr(key: str, value: Any) -> str:
+    def _build_attr_str_repr(
+        key: str, value: Any, replace_underscore: bool = True
+    ) -> str:
         attr_name = ATTR_RENAME_MAP.get(key, key)
-        attr_name = attr_name.replace("_", "-")
+        if replace_underscore:
+            attr_name = attr_name.replace("_", "-")
         if isinstance(value, bool):
             return f"{attr_name} "
         else:
@@ -286,7 +289,7 @@ class Tag(ABC):
                 if key == "dataset":
                     for data_key, data_value in value.items():
                         attrs += self._build_attr_str_repr(
-                            "data-" + data_key, data_value
+                            "data-" + data_key, data_value, replace_underscore=False
                         )
                 elif key == "hx":
                     for hx_key, hx_value in value.attrs:
@@ -301,7 +304,7 @@ class Tag(ABC):
 
     def html(self) -> str:
         # pass
-        
+
         attrs = self._get_attrs()
         if attrs:
             attrs = " " + attrs
@@ -333,9 +336,11 @@ class span(Tag):
 class p(Tag):
     pass
 
+
 @dataclass(slots=True)
 class b(Tag):
     pass
+
 
 @dataclass(slots=True)
 class ul(Tag):
@@ -816,12 +821,13 @@ class embed(Tag):
     width: int | None = None
     height: int | None = None
 
+
 @dataclass(slots=True)
 class progress(Tag):
     max: int | None = None
     value: int | None = None
-    
-    
+
+
 @dataclass(slots=True)
 class hr(Tag):
     pass
