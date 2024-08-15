@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lazyfast"
-version = "0.1.20"
+version = "0.1.21"
 description = "LazyFast = FastAPI + HTMX + Component-based approach + State management"
 authors = ["Nikita Irgashev <nik.irg@yandex.ru>"]
 readme = "README.md"
@@ -13,6 +13,7 @@ exclude = ["examples", "site"]
 python = "^3.11"
 fastapi = "^0.111.0"
 python-multipart = "^0.0.9"
+asgiref = "^3.8.1"
 
 
 [build-system]
