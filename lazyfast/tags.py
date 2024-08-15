@@ -118,9 +118,6 @@ _lang = Literal[
     "zh-CN",
 ]
 
-tag_stack = context.StackManager[Type["Tag"]]("tag_stack")
-
-
 @dataclass(slots=True)
 class Tag(ABC):
     content: str | None = None
@@ -224,11 +221,11 @@ class Tag(ABC):
             raise TypeError(
                 'You cannot use "with" operator and "content" field at the same time'
             )
-        tag_stack.append(self)
+        context.append_tag_to_stack(self)
         return self
 
     def __exit__(self, *_):
-        tag_stack.pop_last()
+        context.pop_last_tag_from_stack()  
 
     def _reset_events(self):
         for tag_field in fields(self):
@@ -256,11 +253,11 @@ class Tag(ABC):
                     value = RELOAD_SCRIPT
                 setattr(self, event, value)
 
-        if parent_tag := tag_stack.get_last():
+        if parent_tag := context.get_last_tag_from_stack():
             parent_tag.add_child(self)
-            tag_stack.update_last(parent_tag)
+            context.update_last_tag_in_stack(parent_tag)
 
-            for tag in tag_stack.stack:
+            for tag in context.get_all_tags_from_stack():
                 if tag.tag_name == "form" and self.tag_name != "button":
                     self._reset_events()
                     break
@@ -303,8 +300,6 @@ class Tag(ABC):
         return "".join([tag.html() for tag in self._children])
 
     def html(self) -> str:
-        # pass
-
         attrs = self._get_attrs()
         if attrs:
             attrs = " " + attrs
