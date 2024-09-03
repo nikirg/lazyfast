@@ -162,7 +162,7 @@ async def root():
                     UserFilter()
 
             with tags.div(class_="cell"):
-                with tags.div(class_="box"):
+                with tags.div(class_="box", style="transition: width 2s;"):
                     UserList()
 
 

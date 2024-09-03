@@ -1,5 +1,6 @@
+from collections import deque
 import asyncio, uuid
-from typing import Type
+from typing import AsyncGenerator, Generator, Iterable, Type
 
 from fastapi import Depends, HTTPException, Request
 
@@ -58,13 +59,17 @@ class ReloadRequest:
 
 
 class Session:
-    def __init__(self, session_id: str, state: State | None = None) -> None:
+    def __init__(
+        self, session_id: str, state: State | None = None, buffer_size: int = 10
+    ) -> None:
         self._session_id = session_id
         self._queue = asyncio.Queue()
         self._components: dict[int, Type["Component"]] = {}
         self._csrf_token = generate_csrf_token()
         self._current_path = None
         self._reload_request = None
+        self._last_reloaded_component_id = None
+        self._buffer = deque(maxlen=buffer_size)
 
         if state:
             state.set_queue(self._queue)
@@ -88,6 +93,10 @@ class Session:
         return self._reload_request
 
     @property
+    def last_reloaded_component_id(self) -> str | None:
+        return self._last_reloaded_component_id
+
+    @property
     def current_path(self) -> str | None:
         return self._current_path
 
@@ -100,9 +109,24 @@ class Session:
     def set_state(self, state: State) -> None:
         self._state = state
 
+    def set_last_reloaded_component_id(self, component_id: str) -> None:
+        self._last_reloaded_component_id = component_id
+
     async def get_updated_component_id(self) -> str | None:
-        if self._state:
-            return await self._state.dequeue()
+        if not self._state:
+            return
+
+        component_id = await self._state.dequeue()
+        self._buffer.append(component_id)
+        return component_id
+
+    def get_missed_events(self) -> Generator[None, None, str]:
+        if self._last_reloaded_component_id is None:
+            return
+
+        for event_id in reversed(self._buffer):
+            if event_id > self._last_reloaded_component_id:
+                yield event_id
 
     def add_component(self, component: Type["Component"]) -> None:
         self._components[str(id(component))] = component

@@ -44,7 +44,7 @@ class LazyFastRouter(APIRouter):
         loader_class: str = "__componentLoader__",
         loader_route_prefix: str = "/__lazyfast__",
         sse_endpoint_dependencies: Sequence[params.Depends] | None = None,
-        sse_tick_interval: int = .5,
+        sse_tick_interval: int = 0.5,
         csrf_input_id: str = "csrf",
         **fastapi_router_kwargs,
     ):
@@ -58,7 +58,7 @@ class LazyFastRouter(APIRouter):
                 Set this argument if you want to use the state manager and reload_on triggers.
             session_cookie_key (str, optional): Key for the session cookie. Defaults to "sid".
             session_cookie_max_age (int, optional): Maximum age of the session cookie in seconds. Defaults to one week (604800 seconds).
-            session_delete_timeout (int, optional): Duration in seconds after a client disconnects, 
+            session_delete_timeout (int, optional): Duration in seconds after a client disconnects,
                 beyond which the client's session is automatically terminated. Defaults to 10 seconds.
             htmx_cdn (str, optional): URL of the HTMX CDN. Defaults to "https://unpkg.com/htmx.org".
             htmx_sse (str, optional): URL of the HTMX SSE extension. Defaults to "https://unpkg.com/htmx.org/dist/ext/sse.js".
@@ -87,11 +87,6 @@ class LazyFastRouter(APIRouter):
         self._sse_tick_interval = sse_tick_interval
         self._csrf_input_id = csrf_input_id
 
-        dependencies = fastapi_router_kwargs.get("dependencies", [])
-        dependencies.append(Depends(self._load_session))
-        dependencies.append(Depends(ReloadRequest))
-        fastapi_router_kwargs["dependencies"] = dependencies
-
         self._js_script = JS_SCRIPT_TEMPLATE.replace(
             "__componentLoader__", loader_class
         )
@@ -101,7 +96,7 @@ class LazyFastRouter(APIRouter):
         self._state_schema = state_schema
         self._register_sse_endpoint(sse_endpoint_dependencies)
 
-    async def _load_session(self, request: Request, response: Response) -> Session:
+    async def _load_session(self, request: Request, response: Response) -> Session:        
         session_id = request.cookies.get(self._session_cookie_key)
         state = self._state_schema() if self._state_schema else None
         session = None
@@ -113,6 +108,9 @@ class LazyFastRouter(APIRouter):
         else:
             session = await SessionStorage.create_session(state)
 
+        if component_id := request.headers.get("hx-target"):
+            session.set_last_reloaded_component_id(component_id)
+            
         session.set_current_path(extract_pattern(request.url.path, self.prefix))
         request.state.session = session
         context.set_session(session)
@@ -133,19 +131,29 @@ class LazyFastRouter(APIRouter):
         async def sse_endpoint(request: Request):
             session: Session = request.state.session
             sid = session.id
+            message_templage = "event: {event_id}\ndata: -\n\n"
 
             async def event_stream():
                 try:
+ 
+                    for event_id in session.get_missed_events():
+                        yield message_templage.format(event_id=event_id)
+                    
                     while not (await request.is_disconnected()):
-                        await asyncio.sleep(self._sse_tick_interval)
                         component_id = await session.get_updated_component_id()
-                        yield f"event: {component_id}\ndata: -\n\n"
+                        yield message_templage.format(event_id=component_id)
+                        await asyncio.sleep(self._sse_tick_interval)
                 finally:
                     await asyncio.sleep(self._session_delete_timeout)
                     if await request.is_disconnected():
                         await SessionStorage.delete_session(sid)
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+        if dependencies:
+            dependencies.append(Depends(self._load_session))
+        else:
+            dependencies = [Depends(self._load_session)]
 
         self.add_api_route(
             url_join(self._loader_route_prefix, "sse"),
@@ -244,7 +252,7 @@ class LazyFastRouter(APIRouter):
                     pass
 
             setattr(PageComponent, "view", func)
-            
+
             self.component(
                 path=path,
                 dependencies=dependencies,
@@ -292,6 +300,11 @@ class LazyFastRouter(APIRouter):
             ...     async def view(self):
             ...         tags.p("Hello World")
         """
+        lazy_fast_deps = [Depends(self._load_session), Depends(ReloadRequest)]
+        if dependencies:
+            dependencies.extend(lazy_fast_deps)
+        else:
+            dependencies = lazy_fast_deps
 
         def decorator(cls: Type[T]) -> Type[T]:
             if not isinstance(cls, type(Component)):
@@ -308,7 +321,7 @@ class LazyFastRouter(APIRouter):
                 prefix or ("/" if path != "/" else ""),
                 path or url_join(self._loader_route_prefix, cls.__name__),
             )
-   
+
             if reload_on:
                 if not id:
                     raise ValueError("id must be specified if reload_on is used")

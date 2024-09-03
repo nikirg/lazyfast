@@ -70,6 +70,7 @@ class TodoList(Component):
                         await self.reload()
 
 
+#@tags.cache(max_age=10, invalidate_on=[State.name])
 def head_renderer():
     tags.title("Todo List")
     tags.link(
@@ -85,4 +86,4 @@ def root():
 
 
 app = FastAPI()
-app.include_router(router) 
+app.include_router(router)

@@ -1,10 +1,12 @@
 from abc import ABC
+import functools
 import html as html_utils
 from dataclasses import dataclass, field, fields
 from typing import Any, Literal, Type
 
 from lazyfast import context
 from lazyfast.htmx import HTMX
+from lazyfast.state import StateField
 
 RELOAD_SCRIPT = "reloadComponent(this, event)"
 THROTTELED_RELOAD_SCRIPT = "throttledReloadComponent(this, event)"
@@ -26,6 +28,7 @@ FIELDS_TO_EXCLUDE = (
     "allow_unsafe_html",
     "reload_on",
     "is_indicator",
+    "cache",
 )
 
 
@@ -82,6 +85,7 @@ __all__ = [
     "embed",
     "hr",
     "progress",
+    "cache",
 ]
 
 _lang = Literal[
@@ -117,6 +121,25 @@ _lang = Literal[
     "ko-KR",
     "zh-CN",
 ]
+
+
+# cache decorator
+def cache(invalidate_on: list[StateField] | None = None, max_age: int | None = None):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            func_id = f"{func.__module__}.{func.__qualname__}:{args}:{kwargs}"
+            
+            if session := context.get_session():
+
+                session.cache.get(func.__name__)
+
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
 
 @dataclass(slots=True)
 class Tag(ABC):
@@ -225,7 +248,7 @@ class Tag(ABC):
         return self
 
     def __exit__(self, *_):
-        context.pop_last_tag_from_stack()  
+        context.pop_last_tag_from_stack()
 
     def _reset_events(self):
         for tag_field in fields(self):
@@ -300,6 +323,9 @@ class Tag(ABC):
         return "".join([tag.html() for tag in self._children])
 
     def html(self) -> str:
+        #if self._cache
+
+
         attrs = self._get_attrs()
         if attrs:
             attrs = " " + attrs

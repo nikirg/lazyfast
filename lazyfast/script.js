@@ -46,5 +46,34 @@ function preventFormSubmission(event) {
 
 const throttledReloadComponent = throttle(reloadComponent);
 
-htmx.on('htmx:sseError', function (evt) { document.location.reload(); });
 
+function saveInputData() {
+  const inputs = document.querySelectorAll('input, textarea, select');
+  inputs.forEach(input => {
+    if (input.type !== 'hidden') {
+      localStorage.setItem(input.name || input.id, input.value);
+    }
+  });
+}
+
+function restoreInputDataForElement(element) {
+  const inputs = element.querySelectorAll('input, textarea, select');
+  inputs.forEach(input => {
+    if (input.type !== 'hidden') {
+      const savedValue = localStorage.getItem(input.name || input.id);
+      if (savedValue) {
+        input.value = savedValue;
+        localStorage.removeItem(input.name || input.id);
+      }
+    }
+  });
+}
+
+htmx.on('htmx:sseError', function (evt) {
+  saveInputData(); 
+  document.location.reload(); 
+});
+
+htmx.on('htmx:afterSettle', function (evt) {
+  restoreInputDataForElement(evt.target);
+});
