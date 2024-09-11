@@ -90,13 +90,20 @@ class LazyFastRouter(APIRouter):
         self._js_script = JS_SCRIPT_TEMPLATE.replace(
             "__componentLoader__", loader_class
         )
-
+        
+        lazy_fast_deps = [Depends(self._load_session), Depends(ReloadRequest)]
+        
+        if "dependencies" in fastapi_router_kwargs:
+            fastapi_router_kwargs["dependencies"].extend(lazy_fast_deps)
+        else:
+            fastapi_router_kwargs["dependencies"] = lazy_fast_deps
+            
         super().__init__(**fastapi_router_kwargs)
 
         self._state_schema = state_schema
         self._register_sse_endpoint(sse_endpoint_dependencies)
 
-    async def _load_session(self, request: Request, response: Response) -> Session:        
+    async def _load_session(self, request: Request, response: Response) -> Session:               
         session_id = request.cookies.get(self._session_cookie_key)
         state = self._state_schema() if self._state_schema else None
         session = None
@@ -114,7 +121,7 @@ class LazyFastRouter(APIRouter):
         session.set_current_path(extract_pattern(request.url.path, self.prefix))
         request.state.session = session
         context.set_session(session)
-
+        
         if not session_id or session_id != session.id:
             response.set_cookie(
                 key=self._session_cookie_key,
@@ -149,11 +156,6 @@ class LazyFastRouter(APIRouter):
                         await SessionStorage.delete_session(sid)
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
-
-        if dependencies:
-            dependencies.append(Depends(self._load_session))
-        else:
-            dependencies = [Depends(self._load_session)]
 
         self.add_api_route(
             url_join(self._loader_route_prefix, "sse"),
@@ -300,17 +302,12 @@ class LazyFastRouter(APIRouter):
             ...     async def view(self):
             ...         tags.p("Hello World")
         """
-        lazy_fast_deps = [Depends(self._load_session), Depends(ReloadRequest)]
-        if dependencies:
-            dependencies.extend(lazy_fast_deps)
-        else:
-            dependencies = lazy_fast_deps
 
         def decorator(cls: Type[T]) -> Type[T]:
             if not isinstance(cls, type(Component)):
                 raise TypeError("Decorated class must be a subclass of Component")
 
-            view_func: Callable = getattr(cls, "view")
+            view_func: Callable | Any = getattr(cls, "view")
 
             if not callable(view_func):
                 raise TypeError("Decorated class must have a view method")
