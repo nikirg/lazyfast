@@ -428,6 +428,7 @@ class a(Tag):
     crossorigin: Literal["anonymous", "use-credentials"] | None = None
     integrity: str | None = None
     referrerpolicy: _referrerpolicy | None = None
+    download: bool | None = None
 
 
 @dataclass(slots=True)
