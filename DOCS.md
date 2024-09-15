@@ -477,7 +477,7 @@ And after the component is rendered:
 State management allows different components to interact with each other through a convenient single interface. State is a pydantic base class that can have an unlimited number of fields, the update of which can be subscribed to by components. Within the framework of `LazyFastRouter` there can be only one model of state. The state is stored in the user session, isolated from other sessions. Under the hood, the state interacts with components through an asynchronous queue and `SSE`.
 
 ## Define state
-To define state model you nedd to inherit `BaseState` class:
+To define state model you need to inherit `BaseState` class:
 ```python
 from lazyfast import LazyFastRouter, BaseState
 
