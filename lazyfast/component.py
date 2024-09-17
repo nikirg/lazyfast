@@ -53,7 +53,7 @@ class Component(BaseModel):
             url=url,
             method="post",
             include=f"#{self._csrf_input_id}, #{container_id}",
-            trigger=f"load, {container_id}, sse:{container_id}",
+            trigger=f"load, {container_id}",
         )
 
         with tags.div(

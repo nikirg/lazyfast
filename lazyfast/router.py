@@ -1,5 +1,6 @@
 import os, inspect, asyncio
 from typing import (
+    Any,
     Callable,
     ParamSpec,
     Sequence,
@@ -12,7 +13,6 @@ from fastapi import Depends, APIRouter, Request, Response, params
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from lazyfast import context, tags
-from lazyfast.htmx import HTMX
 from lazyfast.component import Component
 from lazyfast.state import State, StateField
 from lazyfast.session import ReloadRequest, Session, SessionStorage
@@ -40,11 +40,11 @@ class LazyFastRouter(APIRouter):
         session_cookie_max_age: int = 60 * 60 * 24 * 7,
         session_delete_timeout: int = 10,
         htmx_cdn: str = "https://unpkg.com/htmx.org",
-        htmx_sse: str = "https://unpkg.com/htmx-ext-sse",
         loader_class: str = "__componentLoader__",
         loader_route_prefix: str = "/__lazyfast__",
         sse_endpoint_dependencies: Sequence[params.Depends] | None = None,
         sse_tick_interval: int = 0.5,
+        sse_buffer_size: int = 10,
         csrf_input_id: str = "csrf",
         **fastapi_router_kwargs,
     ):
@@ -61,11 +61,11 @@ class LazyFastRouter(APIRouter):
             session_delete_timeout (int, optional): Duration in seconds after a client disconnects,
                 beyond which the client's session is automatically terminated. Defaults to 10 seconds.
             htmx_cdn (str, optional): URL of the HTMX CDN. Defaults to "https://unpkg.com/htmx.org".
-            htmx_sse (str, optional): URL of the HTMX SSE extension. Defaults to "https://unpkg.com/htmx.org/dist/ext/sse.js".
             loader_class (str, optional): CSS class for the component HTMX loader div. Defaults to "__componentLoader__".
             loader_route_prefix (str, optional): Prefix for the loader request route. Defaults to "/__lazyfast__".
             sse_endpoint_dependencies (Sequence[params.Depends], optional): Dependencies for the SSE endpoint. Defaults to None.
-            ssse_tick_interval (int, optional): Interval in seconds for the SSE event loop tick. Defaults to .5.
+            sse_tick_interval (int, optional): Interval in seconds for the SSE event loop tick. Defaults to .5.
+            sse_buffer_size (int, optional): Maximum size of the SSE buffer. Defaults to 10. The buffer is needed to send events that were not received due to a connection break.
             csrf_input_id (str, optional): ID of the CSRF input tag. Defaults to "csrf".
 
         Raises:
@@ -80,30 +80,30 @@ class LazyFastRouter(APIRouter):
         self._loader_class = loader_class
         self._loader_route_prefix = loader_route_prefix
         self._htmx_cdn = htmx_cdn
-        self._htmx_sse = htmx_sse
         self._session_cookie_key = session_cookie_key
         self._session_cookie_max_age = session_cookie_max_age
         self._session_delete_timeout = session_delete_timeout
         self._sse_tick_interval = sse_tick_interval
+        self._sse_buffer_size = sse_buffer_size
         self._csrf_input_id = csrf_input_id
 
         self._js_script = JS_SCRIPT_TEMPLATE.replace(
             "__componentLoader__", loader_class
         )
-        
+
         lazy_fast_deps = [Depends(self._load_session), Depends(ReloadRequest)]
-        
+
         if "dependencies" in fastapi_router_kwargs:
             fastapi_router_kwargs["dependencies"].extend(lazy_fast_deps)
         else:
             fastapi_router_kwargs["dependencies"] = lazy_fast_deps
-            
+
         super().__init__(**fastapi_router_kwargs)
 
         self._state_schema = state_schema
         self._register_sse_endpoint(sse_endpoint_dependencies)
 
-    async def _load_session(self, request: Request, response: Response) -> Session:               
+    async def _load_session(self, request: Request, response: Response) -> Session:
         session_id = request.cookies.get(self._session_cookie_key)
         state = self._state_schema() if self._state_schema else None
         session = None
@@ -111,17 +111,18 @@ class LazyFastRouter(APIRouter):
         if session_id:
             session = await SessionStorage.get_session(session_id)
             if not session:
-                session = await SessionStorage.create_session(state)
+                session = await SessionStorage.create_session(
+                    state, buffer_size=self._sse_buffer_size
+                )
         else:
-            session = await SessionStorage.create_session(state)
+            session = await SessionStorage.create_session(
+                state, buffer_size=self._sse_buffer_size
+            )
 
-        if component_id := request.headers.get("hx-target"):
-            session.set_last_reloaded_component_id(component_id)
-            
         session.set_current_path(extract_pattern(request.url.path, self.prefix))
         request.state.session = session
         context.set_session(session)
-        
+
         if not session_id or session_id != session.id:
             response.set_cookie(
                 key=self._session_cookie_key,
@@ -135,17 +136,17 @@ class LazyFastRouter(APIRouter):
     def _register_sse_endpoint(
         self, dependencies: Sequence[params.Depends] | None = None
     ):
-        async def sse_endpoint(request: Request):
+        async def sse_endpoint(request: Request, last_event: str | None = None):
             session: Session = request.state.session
             sid = session.id
-            message_templage = "event: {event_id}\ndata: -\n\n"
+            message_templage = "data: {event_id}\n\n"
 
             async def event_stream():
                 try:
- 
-                    for event_id in session.get_missed_events():
-                        yield message_templage.format(event_id=event_id)
-                    
+                    if last_event:
+                        for event_id in session.get_missed_events(last_event):
+                            yield message_templage.format(event_id=event_id)
+
                     while not (await request.is_disconnected()):
                         component_id = await session.get_updated_component_id()
                         yield message_templage.format(event_id=component_id)
@@ -225,21 +226,17 @@ class LazyFastRouter(APIRouter):
             with tags.html(lang=html_lang):
                 with tags.head():
                     tags.script(src=self._htmx_cdn)
-                    tags.script(src=self._htmx_sse)
                     tags.script(self._js_script)
 
                     if head_renderer:
                         head_renderer()
 
                 session = context.get_session()
-                hx = HTMX(
-                    ext="sse",
-                    sse_connect=url_join(
-                        session.current_path, self._loader_route_prefix, "sse"
-                    ),
+                sse_url = url_join(
+                    session.current_path, self._loader_route_prefix, "sse"
                 )
 
-                with tags.body(hx=hx):
+                with tags.body(dataset={"sse": sse_url}):
                     tags.input(
                         id=self._csrf_input_id,
                         type_="hidden",

@@ -69,11 +69,37 @@ function restoreInputDataForElement(element) {
   });
 }
 
-htmx.on('htmx:sseError', function (evt) {
-  saveInputData(); 
-  document.location.reload(); 
-});
 
 htmx.on('htmx:afterSettle', function (evt) {
   restoreInputDataForElement(evt.target);
 });
+
+
+window.onload = function () {
+  let sse = document.body.dataset.sse;
+
+  if (!sse) {
+    return;
+  }
+
+  const lastEvent = localStorage.getItem("sse_last_event");
+
+  if (lastEvent) {
+    sse = `${sse}?last_event=${lastEvent}`;
+  }
+
+  const sseSource = new EventSource(sse);
+
+  sseSource.onmessage = function (event) {
+    const target = document.getElementById(event.data);
+    localStorage.setItem("sse_last_event", event.data);
+    if (target) {
+      reloadComponent(target);
+    }
+  };
+
+  sseSource.onerror = function (error) {
+    saveInputData();
+    document.location.reload();
+  };
+}

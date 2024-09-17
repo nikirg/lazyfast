@@ -28,9 +28,6 @@ class HTMX:
         select: str | None = None,
         vals: dict[str, Any] | str | None = None,
         include: str | None = None,
-        ext: str | None = None,
-        sse_connect: str | None = None,
-        sse_swap: str | None = None,
         headers: dict[str, str] | None = None,
     ) -> None:
         self._url = url
@@ -41,10 +38,7 @@ class HTMX:
         self._select = select
         self._vals = vals
         self._include = include
-        self._ext = ext
         self._headers = headers
-        self._sse_connect = sse_connect
-        self._sse_swap = sse_swap
 
         self._current_component = None
         self._current_parent_element = None
@@ -65,9 +59,6 @@ class HTMX:
                 json.dumps(self._vals) if isinstance(self._vals, dict) else self._vals,
             ),
             ("hx-target", self._target),
-            ("hx-ext", self._ext),
             ("hx-headers", json.dumps(self._headers) if self._headers else None),
-            ("sse-connect", self._sse_connect),
-            ("sse-swap", self._sse_swap),
             ("hx-encoding", "multipart/form-data"),
         ]

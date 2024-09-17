@@ -300,7 +300,7 @@ When, you go to the `/` page, you will see the following:
     id="MyComponent" 
     hx-post="/" 
     hx-include="#csrf, #MyComponent" 
-    trigger="load, MyComponent, sse:MyComponent"
+    trigger="load, MyComponent"
 ></div>
 ```
 And after the component is loaded, you will see:
@@ -310,7 +310,7 @@ And after the component is loaded, you will see:
     id="MyComponent"
     hx-post="/"
     hx-include="#csrf, #MyComponent"
-    hx-trigger="load, MyComponent, sse:MyComponent"
+    hx-trigger="load, MyComponent"
 >
     <div>My lazy loaded component</div>
 </div>

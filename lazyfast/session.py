@@ -68,7 +68,6 @@ class Session:
         self._csrf_token = generate_csrf_token()
         self._current_path = None
         self._reload_request = None
-        self._last_reloaded_component_id = None
         self._buffer = deque(maxlen=buffer_size)
 
         if state:
@@ -109,9 +108,6 @@ class Session:
     def set_state(self, state: State) -> None:
         self._state = state
 
-    def set_last_reloaded_component_id(self, component_id: str) -> None:
-        self._last_reloaded_component_id = component_id
-
     async def get_updated_component_id(self) -> str | None:
         if not self._state:
             return
@@ -120,14 +116,14 @@ class Session:
         self._buffer.append(component_id)
         return component_id
 
-    def get_missed_events(self) -> Generator[None, None, str]:
-        if self._last_reloaded_component_id is None:
-            return
-
-        for event_id in reversed(self._buffer):
-            if event_id > self._last_reloaded_component_id:
-                yield event_id
-
+    def get_missed_events(self, last_event: str) -> Generator[None, None, str]:
+        found = False
+        for event in self._buffer:
+            if found:
+                yield event
+            if event == last_event:
+                found = True
+                
     def add_component(self, component: Type["Component"]) -> None:
         self._components[str(id(component))] = component
 
@@ -144,11 +140,11 @@ class SessionStorage:
         return SessionStorage.sessions.get(session_id)
 
     @staticmethod
-    async def create_session(state: Type[State] | None = None) -> Session:
+    async def create_session(state: Type[State] | None = None, buffer_size: int = 10) -> Session:
         session_id = str(uuid.uuid4())
 
         async with SessionStorage.lock:
-            session = Session(session_id, state)
+            session = Session(session_id, state, buffer_size=buffer_size)
             SessionStorage.sessions[session_id] = session
             return session
 
