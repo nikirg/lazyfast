@@ -68,13 +68,10 @@ __all__ = [
     "meta",
     "link",
     "script",
-    "meta",
     "html",
     "head",
     "body",
-    "meta",
     "link",
-    "meta",
     "caption",
     "dl",
     "dt",
@@ -86,6 +83,8 @@ __all__ = [
     "hr",
     "progress",
     "cache",
+    "pre",
+    "code"
 ]
 
 _lang = Literal[
@@ -225,7 +224,10 @@ class Tag(ABC):
 
     @property
     def tag_name(self) -> str:
-        return self.__class__.__name__.lower()
+        name = self.__class__.__name__
+        if name.endswith("_"):
+            name = name[:-1]
+        return name.lower()
 
     @property
     def children(self) -> list[Type["Tag"]]:
@@ -852,4 +854,12 @@ class progress(Tag):
 
 @dataclass(slots=True)
 class hr(Tag):
+    pass
+
+@dataclass(slots=True)
+class pre(Tag):
+    pass
+
+@dataclass(slots=True)
+class code(Tag):
     pass

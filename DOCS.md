@@ -435,7 +435,7 @@ class MyComponent(Component):
 This example hide `span` by default and show after button click. And add `is-loading` class to the button.
 
 ### `ReloadRequest`
-Previously, we described ways to hadnle the reload via the property trigger, but this approach requires us to wait for the entire current tag structure to render. However, we may have a scenario in which we must completely rebuild the component based on incoming data from the user. LazyFast has a `ReloadRequest` object for this.
+Previously, we described ways to handle the reload via the property trigger, but this approach requires us to wait for the entire current tag structure to render. However, we may have a scenario in which we must completely rebuild the component based on incoming data from the user. LazyFast has a `ReloadRequest` object for this.
 ```python
 @router.component()
 class MyComponent(Component):
@@ -527,7 +527,7 @@ class MyComponent(Component):
         # directly `open` and `commit`
         state.open()
         state.my_field = 1
-        await state.close()
+        await state.commit()
 
         # or
         # directly `open` and `commit` with try/finally
@@ -535,7 +535,7 @@ class MyComponent(Component):
             state.open()
             state.my_field = 1
         finally:
-            await state.close()
+            await state.commit()
 ...
 ```
 After this three ways of state commit, the component will be reloaded with the new state value.
