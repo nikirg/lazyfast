@@ -30,17 +30,14 @@ def generate_csrf_token() -> str:
 
 
 def extract_pattern(input_string: str, pattern: str) -> str | None:
-    escaped_pattern = (
-        re.escape(pattern)
-        .replace(r"\{", "{")
-        .replace(r"\}", "}")
-        .replace(r"{survey_id}", "([^/]+)")
+    escaped_pattern = re.escape(pattern)
+    escaped_pattern = re.sub(
+        r"\\\{([a-zA-Z_][a-zA-Z0-9_]*)\\\}", r"([^/]+)", escaped_pattern
     )
     match = re.match(f"^{escaped_pattern}", input_string)
+
     if match:
         return match.group(0)
-    return None
-
 
 def get_function_id(func: Callable) -> str:
     unique_string = f"{func.__name__}.{func.__module__}"

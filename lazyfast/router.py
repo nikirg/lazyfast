@@ -102,6 +102,8 @@ class LazyFastRouter(APIRouter):
 
         self._state_schema = state_schema
         self._register_sse_endpoint(sse_endpoint_dependencies)
+        self._active_session_cleanup_tasks: dict[str, asyncio.Task] = {}
+        self._active_session_cleanup_tasks_lock = asyncio.Lock()
 
     async def _load_session(self, request: Request, response: Response) -> Session:
         session_id = request.cookies.get(self._session_cookie_key)
@@ -139,24 +141,36 @@ class LazyFastRouter(APIRouter):
         async def sse_endpoint(request: Request, last_event: str | None = None):
             session: Session = request.state.session
             sid = session.id
-            message_templage = "data: {event_id}\n\n"
+            message_template = "data: {event_id}\n\n"
+
+            async with self._active_session_cleanup_tasks_lock:
+                if cleanup_task := self._active_session_cleanup_tasks.pop(sid, None):
+                    cleanup_task.cancel()
+
+            async def delete_session():
+                await asyncio.sleep(self._session_delete_timeout)
+                await SessionStorage.delete_session(sid)
 
             async def event_stream():
                 try:
                     if last_event:
                         for event_id in session.get_missed_events(last_event):
-                            yield message_templage.format(event_id=event_id)
+                            yield message_template.format(event_id=event_id)
 
-                    while not (await request.is_disconnected()):
+                    while True:
                         component_id = await session.get_updated_component_id()
-                        yield message_templage.format(event_id=component_id)
+                        yield message_template.format(event_id=component_id)
                         await asyncio.sleep(self._sse_tick_interval)
-                finally:
-                    await asyncio.sleep(self._session_delete_timeout)
-                    if await request.is_disconnected():
-                        await SessionStorage.delete_session(sid)
+                except asyncio.CancelledError:
+                    cleanup_task = asyncio.create_task(delete_session())
 
-            return StreamingResponse(event_stream(), media_type="text/event-stream")
+                    async with self._active_session_cleanup_tasks_lock:
+                        self._active_session_cleanup_tasks[sid] = cleanup_task
+
+            return StreamingResponse(
+                event_stream(),
+                media_type="text/event-stream",
+            )
 
         self.add_api_route(
             url_join(self._loader_route_prefix, "sse"),

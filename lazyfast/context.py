@@ -50,3 +50,10 @@ def set_session(session: dict[str, Any]) -> None:
 
 def get_session() -> dict[str, Any] | None:
     return getattr(local_data, "session", None)
+
+
+def enable_caching() -> None:
+    local_data.caching = True
+    
+def is_caching_enabled() -> bool:
+    return getattr(local_data, "caching", False)

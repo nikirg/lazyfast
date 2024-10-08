@@ -82,152 +82,23 @@ __all__ = [
     "embed",
     "hr",
     "progress",
-    "cache",
     "pre",
-    "code"
+    "code",
+    "raw",
 ]
-
-_lang = Literal[
-    "en",
-    "ru",
-    "es",
-    "fr",
-    "de",
-    "it",
-    "ja",
-    "ko",
-    "zh",
-    "zh-Hant",
-    "zh-Hans",
-    "th",
-    "vi",
-    "pl",
-    "nl",
-    "tr",
-    "fa",
-    "uk",
-    "pt",
-    "cs",
-    "sv",
-    "ro",
-    "hi",
-    "id",
-    "he",
-    "ar",
-    "bn",
-    "ta",
-    "ja-JP-mo",
-    "ko-KR",
-    "zh-CN",
-]
-
-
-# cache decorator
-def cache(invalidate_on: list[StateField] | None = None, max_age: int | None = None):
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            func_id = f"{func.__module__}.{func.__qualname__}:{args}:{kwargs}"
-            
-            if session := context.get_session():
-
-                session.cache.get(func.__name__)
-
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
 
 
 @dataclass(slots=True)
-class Tag(ABC):
+class BaseHTML(ABC):
     content: str | None = None
-
-    id: str | None = None
-    class_: str | None = None
-    style: str | None = None
-    title: str | None = None
-    role: str | None = None
-    dataset: dict[str, Any] | None = None
-    accesskey: str | None = None
-    contenteditable: bool | None = None
-    contextmenu: str | None = None
-    dir_: Literal["ltr", "rtl", "auto"] | None = None
-    draggable: bool | None = None
-    dropzone: Literal["copy", "move", "link"] | None = None
-    hidden: bool | None = None
-    lang: _lang | None = None
-    spellcheck: bool | None = None
-    tabindex: int | None = None
-    translate: Literal["yes", "no"] | None = None
-    aria_labelledby: str | None = None
-    aria_expand: str | None = None
-    aria_controls: str | None = None
-    popovertarget: str | None = None
-    popover: bool | None = None
-    popovertargetaction: Literal["hide", "show"] | None = None
-
-    onblur: str | None = None
-    onchange: str | None = None
-    onclick: str | None = None
-    ondbclick: str | None = None
-    onfocus: str | None = None
-    onkeydown: str | None = None
-    onkeypress: str | None = None
-    onkeyup: str | None = None
-    onload: str | None = None
-    onmousedown: str | None = None
-    onmousemove: str | None = None
-    onmouseout: str | None = None
-    onmouseover: str | None = None
-    onmouseup: str | None = None
-    onunload: str | None = None
-
-    itemid: str | None = None
-    itemprop: str | None = None
-    itemref: str | None = None
-    itemscope: bool | None = None
-    itemtype: str | None = None
-
-    hx: Type[HTMX] | None = None
     allow_unsafe_html: bool = False
-    reload_on: list[str] | None = None
-    is_indicator: bool = False
-
-    # TODO xml:_lang
-    aria_label: str | None = None
-    aria_labelledby: str | None = None
-    aria_describedby: str | None = None
-    aria_hidden: bool | None = None
-    aria_expanded: bool | None = None
-    aria_controls: str | None = None
-    aria_live: Literal["off", "polite", "assertive"] | None = None
-    aria_current: Literal["page", "step", "location", "date", "time", "true"] | None = (
-        None
-    )
-    aria_pressed: bool | None = None
 
     _self_closing: bool = field(default=False, init=False)
     _children: list[Type["Tag"]] = field(default_factory=list)
 
     @property
-    def trigger(self) -> str | None:
-        if not self.id:
-            raise ValueError("Trigger checking requires tag id")
-
-        session = context.get_session()
-
-        if tid := session.reload_request.trigger_id:
-            if tid == self.id:
-                return session.reload_request.trigger_event
-
-    @property
     def tag_name(self) -> str:
-        name = self.__class__.__name__
-        if name.endswith("_"):
-            name = name[:-1]
-        return name.lower()
+        return self.__class__.__name__.lower()
 
     @property
     def children(self) -> list[Type["Tag"]]:
@@ -238,57 +109,6 @@ class Tag(ABC):
 
     def clear_children(self):
         self._children = []
-
-    def __enter__(self):
-        if self._self_closing:
-            raise TypeError('You cannot use "with" operator in a self-closing tag')
-        if self.content:
-            raise TypeError(
-                'You cannot use "with" operator and "content" field at the same time'
-            )
-        context.append_tag_to_stack(self)
-        return self
-
-    def __exit__(self, *_):
-        context.pop_last_tag_from_stack()
-
-    def _reset_events(self):
-        for tag_field in fields(self):
-            if tag_field.name.startswith("on"):
-                setattr(self, tag_field.name, None)
-
-    def __post_init__(self):
-        if self.is_indicator:
-            self.class_ += " htmx-indicator"
-
-        if self.reload_on:
-            self._reset_events()
-
-            for event in self.reload_on:
-                if not event.startswith("on"):
-                    event = "on" + event
-
-                if event in (
-                    "oninput",
-                    "onkeydown",
-                    "onkeyup",
-                ):
-                    value = THROTTELED_RELOAD_SCRIPT
-                else:
-                    value = RELOAD_SCRIPT
-                setattr(self, event, value)
-
-        if parent_tag := context.get_last_tag_from_stack():
-            parent_tag.add_child(self)
-            context.update_last_tag_in_stack(parent_tag)
-
-            for tag in context.get_all_tags_from_stack():
-                if tag.tag_name == "form" and self.tag_name != "button":
-                    self._reset_events()
-                    break
-
-        else:
-            context.add_root_tag(self)
 
     @staticmethod
     def _build_attr_str_repr(
@@ -325,9 +145,6 @@ class Tag(ABC):
         return "".join([tag.html() for tag in self._children])
 
     def html(self) -> str:
-        #if self._cache
-
-
         attrs = self._get_attrs()
         if attrs:
             attrs = " " + attrs
@@ -342,7 +159,150 @@ class Tag(ABC):
         else:
             content = self._build_content()
 
+        if self.tag_name == "raw":
+            return content
         return f"<{self.tag_name}{attrs}>{content}</{self.tag_name}>"
+
+    def __enter__(self):
+        if self._self_closing:
+            raise TypeError('You cannot use "with" operator in a self-closing tag')
+        if self.content:
+            raise TypeError(
+                'You cannot use "with" operator and "content" field at the same time'
+            )
+        context.append_tag_to_stack(self)
+        return self
+
+    def __exit__(self, *_):
+        context.pop_last_tag_from_stack()
+
+    def __post_init__(self):
+        if parent_tag := context.get_last_tag_from_stack():
+            parent_tag.add_child(self)
+            context.update_last_tag_in_stack(parent_tag)
+
+        else:
+            context.add_root_tag(self)
+
+
+@dataclass(slots=True)
+class raw(BaseHTML):
+    allow_unsafe_html: bool = True
+
+
+@dataclass(slots=True)
+class Tag(BaseHTML):
+    id: str | None = None
+    class_: str | None = None
+    style: str | None = None
+    title: str | None = None
+    role: str | None = None
+    dataset: dict[str, Any] | None = None
+    accesskey: str | None = None
+    contenteditable: bool | None = None
+    contextmenu: str | None = None
+    dir_: Literal["ltr", "rtl", "auto"] | None = None
+    draggable: bool | None = None
+    dropzone: Literal["copy", "move", "link"] | None = None
+    hidden: bool | None = None
+    lang: str | None = None
+    spellcheck: bool | None = None
+    tabindex: int | None = None
+    translate: Literal["yes", "no"] | None = None
+    aria_labelledby: str | None = None
+    aria_expand: str | None = None
+    aria_controls: str | None = None
+    popovertarget: str | None = None
+    popover: bool | None = None
+    popovertargetaction: Literal["hide", "show"] | None = None
+
+    onblur: str | None = None
+    onchange: str | None = None
+    onclick: str | None = None
+    ondbclick: str | None = None
+    onfocus: str | None = None
+    onkeydown: str | None = None
+    onkeypress: str | None = None
+    onkeyup: str | None = None
+    onload: str | None = None
+    onmousedown: str | None = None
+    onmousemove: str | None = None
+    onmouseout: str | None = None
+    onmouseover: str | None = None
+    onmouseup: str | None = None
+    onunload: str | None = None
+
+    itemid: str | None = None
+    itemprop: str | None = None
+    itemref: str | None = None
+    itemscope: bool | None = None
+    itemtype: str | None = None
+
+    hx: Type[HTMX] | None = None
+    reload_on: list[str] | None = None
+    is_indicator: bool = False
+
+    # TODO xml:_lang
+    aria_label: str | None = None
+    aria_labelledby: str | None = None
+    aria_describedby: str | None = None
+    aria_hidden: bool | None = None
+    aria_expanded: bool | None = None
+    aria_controls: str | None = None
+    aria_live: Literal["off", "polite", "assertive"] | None = None
+    aria_current: Literal["page", "step", "location", "date", "time", "true"] | None = (
+        None
+    )
+    aria_pressed: bool | None = None
+
+    @property
+    def trigger(self) -> str | None:
+        if not self.id:
+            raise ValueError("Trigger checking requires tag id")
+
+        session = context.get_session()
+
+        if tid := session.reload_request.trigger_id:
+            if tid == self.id:
+                return session.reload_request.trigger_event
+
+    def _reset_events(self):
+        for tag_field in fields(self):
+            if tag_field.name.startswith("on"):
+                setattr(self, tag_field.name, None)
+
+    def __post_init__(self):
+        if self.is_indicator:
+            self.class_ += " htmx-indicator"
+
+        if self.reload_on:
+            self._reset_events()
+
+            for event in self.reload_on:
+                if not event.startswith("on"):
+                    event = "on" + event
+
+                if event in (
+                    "oninput",
+                    "onkeydown",
+                    "onkeyup",
+                ):
+                    value = THROTTELED_RELOAD_SCRIPT
+                else:
+                    value = RELOAD_SCRIPT
+                setattr(self, event, value)
+
+        if parent_tag := context.get_last_tag_from_stack():
+            parent_tag.add_child(self)
+            context.update_last_tag_in_stack(parent_tag)
+
+        else:
+            context.add_root_tag(self)
+
+        for tag in context.get_all_tags_from_stack():
+            if tag.tag_name == "form" and self.tag_name != "button":
+                self._reset_events()
+                break
 
 
 @dataclass(slots=True)
@@ -546,12 +506,12 @@ class meta(Tag):
 
 @dataclass(slots=True)
 class html(Tag):
-    lang: _lang | None = None
+    lang: str | None = None
 
 
 @dataclass(slots=True)
 class body(Tag):
-    lang: _lang | None = None
+    lang: str | None = None
 
 
 @dataclass(slots=True)
@@ -856,9 +816,11 @@ class progress(Tag):
 class hr(Tag):
     pass
 
+
 @dataclass(slots=True)
 class pre(Tag):
     pass
+
 
 @dataclass(slots=True)
 class code(Tag):

@@ -79,3 +79,4 @@ class State(BaseModel, metaclass=ModelMeta):
 
     async def __aexit__(self, *_) -> None:
         await self.commit()
+
