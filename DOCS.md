@@ -536,7 +536,7 @@ class MyComponent(Component):
 ```
 After committing the state using any of the three methods, the component will reload with the updated state value.
 >   
-> ⚠️ LazyFast currently lacks a concurrent commit system, meaning that simultaneous state updates from multiple parts of the code at high frequency may lead to unpredictable behavior. However, I'm actively working on addressing this issue.
+> ⚠️ LazyFast currently lacks a concurrent commit system, so simultaneous state updates from multiple parts of the code within a session (i.e., within a single client) at high frequency may lead to unpredictable behavior. I'm actively working on addressing this issue.
 
 ## Session API
 Coming soon...
