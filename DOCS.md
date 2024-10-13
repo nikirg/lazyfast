@@ -17,7 +17,6 @@
     - [Dataset](#dataset)
     - [Dynamic editing](#dynamic-editing)
   - [Nesting](#nesting)
-  - [Caching](#caching)
   - [Custom tags](#custom-tags)
 - [Component](#component)
   - [Define a component](#define-a-component)
@@ -35,11 +34,10 @@
   - [Load state](#load-state)
   - [Commit state](#commit-state)
   - [Session API](#session-api)
-- [Production](#production)
 
 
 # Application router
-LazyFast is very tightly integrated with FastAPI. LazyFast application is a router inherited from `fastapi.APIRouter`. This means that LazyFast can be integrated into an existing FastAPI application, add a URL `prefix`, configure `dependencies` at the router level, and so on. It is implied that logic can be distributed across several LazyFast Routers at once. They isolate the session and state manager within themselves.
+LazyFast is deeply integrated with FastAPI. A LazyFast application is built as a router that inherits from `fastapi.APIRouter`. This allows you to easily integrate LazyFast into an existing FastAPI application, add a URL prefix, and configure dependencies at the router level, among other features. You can also distribute logic across multiple LazyFast routers, with each router managing its own session and state independently.
 ```python
 from fastapi import FastAPI
 from lazyfast import LazyFastRouter
@@ -56,7 +54,7 @@ app.include_router(project_router)
 ```
 
 # Page
-Every LazyFast tag and component works only in the context of a page. You can define your page with `@router.page` decorator. Page decorator creates endpoint which returns HTML response LazyFast javascript dependencies. Decorated function works like regular FastAPI endpoint, support all dependency injection features, the only exception is, that you don't need to specify return value. LazyFast build and return final `HTMLResponse` impicitly. Also page inject hidden `input` tag with `csrf` token.
+Every LazyFast tag and component operates within the context of a page. You can define a page using the `@router.page` decorator. This decorator creates an endpoint that returns an HTML response along with LazyFast's JavaScript dependencies. The decorated function behaves like a regular FastAPI endpoint and supports all dependency injection features. However, you don’t need to specify a return value — LazyFast automatically builds and returns the final `HTMLResponse`. Additionally, the page injects a hidden `input` tag containing a csrf token.
 ```python
 from fastapi import FastAPI
 from lazyfast import LazyFastRouter, tags
@@ -120,7 +118,7 @@ def index():
         tags.span(f"This page is use bootstrap v5.1.3")
 ...
 ```
-This example will add bootstrap css and js to the page head. 
+This example will add `bootstrap` css and js to the page head. 
 You also can `meta` tag inside the `head_renderer` function.
 
 # Tag
@@ -151,10 +149,10 @@ from lazyfast.tags import div, span, h1
 ```
 
 ## Attributes
-Library provides almost all standard HTML attributes and lazyfast specific attributes for component's interactivity. Under the hood, LazyFast uses the `dataclasses` to implement tags logic and attributes.
+The library supports nearly all standard HTML attributes, along with LazyFast-specific attributes for enhancing component interactivity. Under the hood, LazyFast uses Python `dataclasses` to manage the logic behind tags and attributes.
 
 ### Standart html attributes
-Almost all tag's attributes duplicates standart HTML attributes, but several of them ends with underscore, because in their original form they coincid with python reserved words or built-in methods.
+Almost all tag attributes correspond to standard HTML attributes. However, some end with an underscore because their original form conflicts with Python reserved words or built-in methods.
 This is a map between original and lazyfast attributes:
 ```json
 {
@@ -183,7 +181,7 @@ It is equivalent to:
     onkeydown="reloadComponent(this, event)"
 ></div>
 ```
-Function `reloadComponent` is library internal javascript function, based on HTMX, that reloads a component and send all input values to the server. There is no necessity use this function directly in your code. We advise to use `reload_on` parameter with a list of events.
+The `reloadComponent` function is an internal JavaScript function in the library, built on HTMX. It reloads a component and sends all input values to the server. You don't need to use this function directly in your code. Instead, we recommend using the `reload_on` parameter with a list of events to trigger component reloads.
 
 #### `is_indicator`
 This attribute is used to show or hide a tag when component is in reloading process. Is is equivalent to `htmx-indicator` class. The most frequent use case is to show a loader or spinner during reloading.
@@ -198,7 +196,7 @@ Direct way to set the `htmx-indicator` class:
 tags.button("Run reloading", reload_on=["click"]) 
 tags.span("Loading...", class_="htmx-indicator")
 ```
-This `span` tag is not visible when the component is not in reloading process. Reloading process is the time between `reloadComponent` function trigger and the server response.
+The `span` tag is hidden when the component is not in the process of reloading. The reloading process occurs between the trigger of the `reloadComponent` function and the server's response.
 
 #### `allow_unsafe_html`
 For the purpose of security, we use `allow_unsafe_html` to allow use of unsafe HTML in the component. This attribute is `False` by default. Use case example:
@@ -211,7 +209,7 @@ is equivalent to:
 ```
 
 ### HTMX
-LazyFast library uses the `htmx` library to implement client-server interaction. It presented by the `HTMX` class, which implements limited HTMX features. `HTMX` class is used in internal library logic, and you don't need to use it in the most common use cases. But you can use it in custom scenarios by setting `hx` tag parameter with the `HTMX` instance.
+The LazyFast library uses the `htmx` library to handle client-server interactions, represented by the HTMX class, which implements a limited set of htmx features. In most common use cases, you won't need to interact directly with the HTMX class, as it is used internally by the library. However, for custom scenarios, you can manually use it by setting the `hx` tag parameter with an instance of HTMX.
 ```python
 hx = HTMX(url="/some/endpoint", method="post", trigger="reveal")
 tags.div(hx=hx)
@@ -238,14 +236,14 @@ Is equivalent to:
 Coming soon...
 
 ## Nesting
-LazyFast library allows you to nest tags and components in the same way as HTML. This is being implemented using python `with` operator
+The LazyFast library lets you nest tags and components just like you would in HTML. This is achieved using Python's `with` statement.
 ```python
 # field div inside box div
 with tags.div(class_="box", id="box"):
     with tags.div(class_="field"):
 ```
-Nesting don't have any limitation on the nesting level. You can use any number of nested tags and components in the same way as HTML.
-In case when you want nest just a plain text, use `content` tag parameter, first optional positional argument. 
+There are no limitations on the nesting level — you can nest as many tags and components as you like, similar to HTML. 
+If you want to nest plain text, use the `content` tag parameter, which is the first optional positional argument.
 >   
 > ⚠️ You can't use `with` and `content` nesting at the same time
 > ```python
@@ -255,11 +253,8 @@ In case when you want nest just a plain text, use `content` tag parameter, first
 > This code raises an error
 > 
 
-## Caching
-Coming soon...
-
 ## Custom tags
-If you want to use your own tags, or LazyFast library doesn't support existed HTML tags, you can create it by inheriting from the `Tag` class and decorate it with `@dataclass(slots=True)` decorator:
+If you want to use custom tags or if the LazyFast library doesn't support certain existing HTML tags, you can create your own by inheriting from the `Tag` Tag class and using the `@dataclass(slots=True)` decorator:
 ```python
 from dataclasses import dataclass
 from lazyfast.tags import Tag
@@ -270,8 +265,7 @@ class MyCustomTag(Tag):
 ```
 
 # Component
-A component is a class that allows you to build complex nested web interfaces with interactivity and lazy loading. Components help reuse code and distribute it into logical blocks.
-Components can be nested in pages or in other components.
+A component is a class that helps you create complex, interactive web interfaces with lazy loading. It enables code reuse by organizing your interface into logical blocks. Components can be nested within pages or even inside other components, allowing for flexible and scalable design.
 
 ## Define a component
 Creating a component consists of declaring a class inherited from `Component` and registering the component in the router with the appropriate decorator.
@@ -315,11 +309,10 @@ And after the component is loaded, you will see:
     <div>My lazy loaded component</div>
 </div>
 ```
-From the HTML point of view, creating a component object is creating a `div` tag with special HTMX settings.
+From an HTML perspective, creating a component involves generating a `div` tag with specific HTMX attributes.
 
 ### View endpoint
-View endpoint register by component decorator and is called from cliet side.
-This endpoint completely coresponds to the Fastapi endpoint, with all dependency injection features and async support.
+The `view` endpoint, registered using the component decorator, is called from the client side. This endpoint fully corresponds to a FastAPI endpoint, supporting all dependency injection features and asynchronous functionality.
 ```python
 ...
 async def my_dependency() -> str:
@@ -353,8 +346,9 @@ def index():
 ```
 
 ## Reloading
-Component reloadind is the key feature of component interacivity. LazyLoad insipred by **Streamlit**, which reloads (rerun in Streamlit) page after interaction with inputs, buttons and so on. From Streamlit **1.33.0** you can use fragments - oportunity to rerun only party of page. LazyFast components interactivity is every similar to fragments, but more flexible and with multiple nesting support. 
-Reload is trgiggered by many source of events: tags interactivity, state fields changes and self reloading. Reloading is a `post` request from client to the component's view endpoint at the server and receiving the result of its rendering. Each new reload sends the values ​​of various fields entered by the client to the server and makes it possible to dynamically change the component's appearance on the client.
+Component reloading is a key feature for enabling interactive components in LazyFast. The concept is inspired by Streamlit, where the entire page is reloaded (or "rerun") after interactions with inputs, buttons, and other elements. Starting from Streamlit 1.33.0, fragments allow for partial page reruns. LazyFast’s component interactivity is similar to Streamlit's fragments but offers more flexibility with support for multiple nested components.
+
+Reloading is triggered by various sources, such as tag interactions, changes in state fields, and self-reloading mechanisms. This process involves the client sending a `POST` request to the component’s view endpoint on the server, receiving the newly rendered component in response. Each reload sends the current field values from the client to the server, enabling dynamic changes to the component’s appearance based on user input.
 
 ### Tags interactivity
 In LazyFast, the following tags are endowed with interactivity:
@@ -367,7 +361,7 @@ In LazyFast, the following tags are endowed with interactivity:
 | `checkbox` | change              |
 | `textarea` | input               |
 
-To determine the source of the reload, each interactive tag has a `trigger` property, which is either `None` if it was not the source, or contains the text value of the javascript event:
+Each interactive tag has a `trigger` property that indicates whether it caused the reload. If the tag was not the source, trigger will be `None`. If it was the source, trigger will contain the name of the JavaScript event that triggered the reload:
 ```python
 ...
 @router.component()
@@ -398,7 +392,7 @@ class MyComponent(Component):
 Form prevents all reloads except `button` tags.
 
 ### State fields changes
-The component can be subscribed to changes in state fields, if the specified fields have updated their values, the component is reloaded. This happens through the `SSE` without the need to manually refresh the browser page.
+The component can subscribe to changes in specific state fields. When any of these fields are updated, the component automatically reloads. This is done via Server-Sent Events (SSE), eliminating the need for manual browser refreshes.
 ```python
 @router.component(id="MyComponent", reload_in=[State.my_field])
 class MyComponent(Component):
@@ -406,10 +400,10 @@ class MyComponent(Component):
         tags.span(state.my_field)
             
 ```
-For state changes listening you nedd to specify `id` property of the component decorator.
+To enable state change listening, you need to specify the `id` property in the component decorator.
 
 ### Self reloading
-The component can reload itself, this also happens through `SSE`, without the need to reload the page:
+The component can automatically reload itself via SSE (Server-Sent Events) without requiring a full page reload:
 ```python
 @router.component(id="MyComponent")
 class MyComponent(Component):
@@ -420,10 +414,12 @@ class MyComponent(Component):
         await self.reload()
             
 ```
-This example reloads the component every second, which displays a random number. You also need to specify `id` property of the component decorator. It means that you set `id` of `div` component container on HTML page.
+This example reloads the component every second, displaying a random number. You must also specify the `id` property in the component decorator. This sets the `id` of the `div` element that contains the component on the HTML page.
 
 ### Indicators
-After the component has sent a reload request to the server, but has not yet received a response, it is necessary to somehow show the user the waiting state. For this, you can use any tag with the `indicator` attribute. Such a tag automatically becomes hidden and appears only during the reload process. If you need to change the appearance of tags without hiding them, you can specify the reserved field `htmx-indicator-class` inside dataset attribute and specify the class that will be assigned to the tag during the reload process.
+When a component sends a reload request to the server but hasn't yet received a response, it's important to show the user that the system is processing. To indicate this waiting state, you can use any tag with the `is_indicator` attribute. This tag will remain hidden until the reload process begins, at which point it becomes visible.
+
+If you prefer not to hide the tag but want to modify its appearance during the reload, you can use the `htmx-indicator-class` field inside the tag's dataset attribute. This allows you to assign a CSS class to the tag during the reload process, changing its appearance without hiding it.
 ```python
 @router.component()
 class MyComponent(Component):
@@ -432,10 +428,10 @@ class MyComponent(Component):
         tags.button("Run reloading", dataset=dataset) 
         tags.span("Loading...", is_indicator=True)
 ```
-This example hide `span` by default and show after button click. And add `is-loading` class to the button.
+This example hides the `span` element by default and shows it after the `button` is clicked. Additionally, it adds the `is-loading` class to the `button` without hiding it.
 
 ### `ReloadRequest`
-Previously, we described ways to handle the reload via the property trigger, but this approach requires us to wait for the entire current tag structure to render. However, we may have a scenario in which we must completely rebuild the component based on incoming data from the user. LazyFast has a `ReloadRequest` object for this.
+In the past, we discussed handling reloads using the `trigger` property, which requires waiting for the current tag structure to finish rendering. However, there are situations where we need to rebuild the entire component based on new data from the user. For these cases, LazyFast provides a `ReloadRequest` object to facilitate this.
 ```python
 @router.component()
 class MyComponent(Component):
@@ -453,7 +449,7 @@ class MyComponent(Component):
 
 
 ### Container customization
-The component register decorator allows you to change the customize `div` container class and pass `preload_renderer` callable to specify the function that will be called before the component is rendered. This can be useful when you need to render for example skeletons.
+The component register decorator lets you customize the `div` container class and pass a `preload_renderer` function. This function will be called before the component is rendered, which is helpful for scenarios like rendering skeletons.
 ```python
 @router.component(class_"my-class", preload_renderer=lambda: tags.div("Loading..."))
 class MyComponent(Component):
@@ -474,7 +470,7 @@ And after the component is rendered:
 ```
  
 # State
-State management allows different components to interact with each other through a convenient single interface. State is a pydantic base class that can have an unlimited number of fields, the update of which can be subscribed to by components. Within the framework of `LazyFastRouter` there can be only one model of state. The state is stored in the user session, isolated from other sessions. Under the hood, the state interacts with components through an asynchronous queue and `SSE`.
+State management in LazyFast enables components to interact with each other through a unified interface. The `State` class, which is based on Pydantic, can have any number of fields. Components can subscribe to updates to these fields. Within `LazyFastRouter`, only one state model can be used, and this state is stored in the user's session, ensuring isolation from other user sessions. Behind the scenes, the state interacts with components using an asynchronous queue and Server-Sent Events (SSE).
 
 ## Define state
 To define state model you need to inherit `BaseState` class:
@@ -497,7 +493,7 @@ class MyComponent(Component):
 ...
 ```
 The component will be rendered with the current state value.
-You alson can use `State.load` within `@router.page` decorator and other FastAPI endpoints:
+You also can use `State.load` within `@router.page` decorator and other FastAPI endpoints:
 ```python
 ...
 @router.page()
@@ -511,7 +507,7 @@ async def root(state: State = Depends(State.load)):
 ```
 
 ## Commit state
-In order for the field update to trigger a reload of all dependent components, it is necessary to use the commit mechanism. We can use this mechanism in several ways:
+To ensure that updating a field triggers the reload of all dependent components, the commit mechanism must be used. This mechanism can be applied in several ways:
 ```python
 ...
 @router.component()
@@ -538,10 +534,10 @@ class MyComponent(Component):
             await state.commit()
 ...
 ```
-After this three ways of state commit, the component will be reloaded with the new state value.
+After committing the state using any of the three methods, the component will reload with the updated state value.
+>   
+> ⚠️ LazyFast currently lacks a concurrent commit system, meaning that simultaneous state updates from multiple parts of the code at high frequency may lead to unpredictable behavior. However, I'm actively working on addressing this issue.
 
 ## Session API
 Coming soon...
 
-# Production
-Coming soon...
