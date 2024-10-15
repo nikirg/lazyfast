@@ -2,6 +2,13 @@
 
 LazyFast is a lightweight Python library designed for building modern web interfaces using a component-based approach. It enables writing page logic on the server side in Python, integrating seamlessly with FastAPI. With LazyFast, interactive elements like inputs, buttons, and selects trigger component reloads that occur on the server, updating the component's state dynamically.
 
+## What problems does LazyFast solve?
+If you're a Python developer familiar with the basics of HTML, CSS, and JavaScript, but don’t want to dive into modern JavaScript frameworks, LazyFast lets you build web applications that meet modern standards—without needing to learn complex frontend frameworks.
+
+## When is LazyFast a good fit?
+1. Low to Medium Traffic Projects: LazyFast is ideal for projects with low to moderate traffic. Server-side rendering offloads work from the client’s machine, which can improve performance for users. However, for projects with high traffic volumes, server costs may increase due to the heavier backend load.
+2. Prototyping: LazyFast was created to address the challenges I faced in my own work. Building prototypes and demos often needs to be fast and efficient, but involving frontend developers can slow things down and increase costs. I’ve worked extensively with Streamlit, but while it's quick, it has significant limitations and tends to produce applications that all look the same.
+
 ## Key Features
 
 1. **Component-Based Server Rendering**: Build web interfaces using lazy loaded components that encapsulate logic, state, and presentation. 
