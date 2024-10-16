@@ -7,7 +7,7 @@ readme = "README.md"
 homepage = "https://github.com/nikirg/lazyfast"
 repository = "https://github.com/nikirg/lazyfast"
 documentation = "https://github.com/nikirg/lazyfast/blob/main/DOCS.md"
-exclude = ["examples", "site"]
+exclude = ["examples", "site", "img", "dist"]
 
 [tool.poetry.dependencies]
 python = "^3.11"

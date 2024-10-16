@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/nikirg/lazyfast/refs/heads/main/img/logo.png" alt="LazyFast">
 </p>
 <p align="center">
-  <img src="img/title.png" alt="LazyFast">
+  <img src="https://raw.githubusercontent.com/nikirg/lazyfast/refs/heads/main/img/title.png" alt="LazyFast">
 </p>
 <p align="center">
   <img alt="PyPI - Version" src="https://img.shields.io/pypi/v/lazyfast">
