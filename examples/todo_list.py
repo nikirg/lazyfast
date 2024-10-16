@@ -81,7 +81,7 @@ def head_renderer():
 
 @router.page("/", head_renderer=head_renderer)
 def root():
-    with tags.div(class_="container mt-6"):
+    with tags.div(class_="container mt-6 px-3"):
         TodoList()
 
 
