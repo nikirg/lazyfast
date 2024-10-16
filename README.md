@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="img/logo.png" alt="FastAPI">
+</p>
+
 # LazyFast
 
 LazyFast is a lightweight Python library designed for building modern web interfaces using a component-based approach. It enables writing page logic on the server side in Python, integrating seamlessly with FastAPI. With LazyFast, interactive elements like inputs, buttons, and selects trigger component reloads that occur on the server, updating the component's state dynamically.
