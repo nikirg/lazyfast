@@ -6,8 +6,8 @@ LazyFast is a lightweight Python library designed for building modern web interf
 If you're a Python developer familiar with the basics of HTML, CSS, and JavaScript, but don’t want to dive into modern JavaScript frameworks, LazyFast lets you build web applications that meet modern standards—without needing to learn complex frontend frameworks.
 
 ## When is LazyFast a good fit?
-1. Low to Medium Traffic Projects: LazyFast is ideal for projects with low to moderate traffic. Server-side rendering offloads work from the client’s machine, which can improve performance for users. However, for projects with high traffic volumes, server costs may increase due to the heavier backend load.
-2. Prototyping: LazyFast was created to address the challenges I faced in my own work. Building prototypes and demos often needs to be fast and efficient, but involving frontend developers can slow things down and increase costs. I’ve worked extensively with Streamlit, but while it's quick, it has significant limitations and tends to produce applications that all look the same.
+1. **Low to Medium Traffic Projects**: LazyFast is ideal for projects with low to moderate traffic. Server-side rendering offloads work from the client’s machine, which can improve performance for users. However, for projects with high traffic volumes, server costs may increase due to the heavier backend load.
+2. **Prototyping**: LazyFast was created to address the challenges I faced in my own work. Building prototypes and demos often needs to be fast and efficient, but involving frontend developers can slow things down and increase costs. I’ve worked extensively with Streamlit, but while it's quick, it has significant limitations and tends to produce applications that all look the same.
 
 ## Key Features
 
@@ -71,6 +71,8 @@ uvicorn app:app --reload --timeout-graceful-shutdown 1
 ## Documentation
 Documentation can be found [here](https://github.com/nikirg/lazyfast/blob/main/DOCS.md).
 
+## Examples
+You can find examples in [examples](https://github.com/nikirg/lazyfast/tree/main/examples).
 
 ## License
 
