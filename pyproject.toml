@@ -6,7 +6,7 @@ authors = ["Nikita Irgashev <nik.irg@yandex.ru>"]
 readme = "README.md"
 homepage = "https://github.com/nikirg/lazyfast"
 repository = "https://github.com/nikirg/lazyfast"
-documentation = "https://github.com/nikirg/lazyfast"
+documentation = "https://github.com/nikirg/lazyfast/blob/main/DOCS.md"
 exclude = ["examples", "site"]
 
 [tool.poetry.dependencies]
