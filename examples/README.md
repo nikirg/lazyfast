@@ -8,6 +8,6 @@ pip install -r requirements.txt
 ```
 Run any example via uvicorn:
 ```bash
-uvicorn btc_price:app --host 0.0.0.0 --reload --timeout-graceful-shutdown 1
+uvicorn user_form:app --host 0.0.0.0 --reload --timeout-graceful-shutdown 1
 ``` 
 Go to `http://127.0.0.1:8000/`
