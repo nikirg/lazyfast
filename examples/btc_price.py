@@ -1,5 +1,4 @@
 import asyncio, requests
-import random
 from fastapi import BackgroundTasks, Depends, FastAPI
 from lazyfast import LazyFastRouter, Component, tags, BaseState
 
@@ -24,11 +23,7 @@ class Currency(Component):
     async def view(self, state: State = Depends(State.load)):
         with tags.div(class_="box"):
             with tags.div(class_="content"):
-                # tags.h1(f"BTC: ${random.randint(100, 1000)}")
                 tags.h1(f"BTC: ${state.btc_price}")
-
-        # await asyncio.sleep(1)
-        # await self.reload()
 
 
 def head_renderer():
@@ -37,13 +32,6 @@ def head_renderer():
         rel="stylesheet",
         href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css",
     )
-    
-#     tags.script("""
-# document.body.addEventListener('htmx:sseBeforeMessage', function (e) {
-#     console.log('before', e)
-# })
-#     """)
-
 
 @router.page("/", head_renderer=head_renderer)
 def root(background_tasks: BackgroundTasks, state: State = Depends(State.load)):
@@ -55,8 +43,7 @@ def root(background_tasks: BackgroundTasks, state: State = Depends(State.load)):
     async def price_monitoring():
         while True:
             async with state:
-                # state.btc_price = get_btc_price()
-                state.btc_price = random.randint(100, 1000)
+                state.btc_price = get_btc_price()
             await asyncio.sleep(0.1)
 
     background_tasks.add_task(price_monitoring)

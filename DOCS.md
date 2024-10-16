@@ -447,6 +447,7 @@ class MyComponent(Component):
 - `data`: `None` or request form data (values from all input tags within the component)
 - `session_id`: current unique session id 
 
+> Using a `ReloadRequest` allows you to separate the display from the logic, which is especially important in the context of large components.
 
 ### Container customization
 The component register decorator lets you customize the `div` container class and pass a `preload_renderer` function. This function will be called before the component is rendered, which is helpful for scenarios like rendering skeletons.
