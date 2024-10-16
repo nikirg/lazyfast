@@ -1,25 +1,36 @@
 <p align="center">
-  <img src="img/logo.png" alt="FastAPI">
+  <img src="https://raw.githubusercontent.com/nikirg/lazyfast/refs/heads/main/img/logo.png" alt="LazyFast">
+</p>
+<p align="center">
+  <b style="font-size: 44px;">LazyFast</b>
+</p>
+<p align="center">
+  <img alt="PyPI - Version" src="https://img.shields.io/pypi/v/lazyfast">
+  <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/lazyfast">
+  <img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dm/lazyfast">
 </p>
 
-# LazyFast
+**LazyFast** is a lightweight Python library for building modern, component-based web interfaces using FastAPI. It handles server-side logic in Python, with interactive elements like inputs and buttons triggering server-side component reloads for dynamic state updates.
 
-LazyFast is a lightweight Python library designed for building modern web interfaces using a component-based approach. It enables writing page logic on the server side in Python, integrating seamlessly with FastAPI. With LazyFast, interactive elements like inputs, buttons, and selects trigger component reloads that occur on the server, updating the component's state dynamically.
+**Ideal for Python developers who:**
+- Have basic HTML and CSS knowledge and want to build web interfaces without learning complex frontend frameworks like React, Angular, or Vue.
 
-## What problems does LazyFast solve?
-If you're a Python developer familiar with the basics of HTML, CSS, and JavaScript, but don’t want to dive into modern JavaScript frameworks, LazyFast lets you build web applications that meet modern standards—without needing to learn complex frontend frameworks.
+**Suitable for projects that:**
+- Have low to medium traffic and can benefit from server-side rendering to offload work from the client's machine. *(Note: High traffic may increase server costs due to backend load.)*
+- Require quick prototyping and demos without involving frontend developers. LazyFast offers more flexibility than tools like Streamlit, which can be limiting and produce similar-looking applications.
 
-## When is LazyFast a good fit?
-1. **Low to Medium Traffic Projects**: LazyFast is ideal for projects with low to moderate traffic. Server-side rendering offloads work from the client’s machine, which can improve performance for users. However, for projects with high traffic volumes, server costs may increase due to the heavier backend load.
-2. **Prototyping**: LazyFast was created to address the challenges I faced in my own work. Building prototypes and demos often needs to be fast and efficient, but involving frontend developers can slow things down and increase costs. I’ve worked extensively with Streamlit, but while it's quick, it has significant limitations and tends to produce applications that all look the same.
+**Key Features**
 
-## Key Features
-
-1. **Component-Based Server Rendering**: Build web interfaces using lazy loaded components that encapsulate logic, state, and presentation. 
-2. **Server-Side Logic**: Handle interactions and state management on the server, reducing client-side complexity.
-3. **FastAPI Integration**: Each component or page is a FastAPI endpoint, allowing for dependency injection and other FastAPI features.
-4. **Lightweight**: The only dependencies are FastAPI for Python and HTMX for JavaScript, which can be included via CDN.
-5. **State Management**: Utilize a state manager that can trigger component reloads, ensuring a reactive user experience.
+1. **Component-Based Server Rendering**
+   - Build interfaces with lazy-loaded components that encapsulate logic, state, and presentation.
+2. **Server-Side Logic**
+   - Manage interactions and state on the server, reducing client-side complexity.
+3. **FastAPI Integration**
+   - Components and pages are FastAPI endpoints, supporting dependency injection and other features.
+4. **Lightweight**
+   - Dependencies: FastAPI for Python and HTMX for JavaScript (included via CDN).
+5. **State Management**
+   - Use a state manager to trigger component reloads for a reactive user experience.
 
 ## Installation
 
