@@ -42,7 +42,7 @@ class Component(BaseModel):
 
         component_id = self.component_id
         container_id = self.container_id
-
+        
         if session.current_path:
             prefix = session.current_path.split(self._loader_route_prefix)[0]
         else:

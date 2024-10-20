@@ -121,7 +121,9 @@ class LazyFastRouter(APIRouter):
                 state, buffer_size=self._sse_buffer_size
             )
 
-        session.set_current_path(extract_pattern(request.url.path, self.prefix))
+        session.set_current_path(
+            extract_pattern(request.url.path, self._loader_route_prefix)
+        )
         request.state.session = session
         context.set_session(session)
 
@@ -245,10 +247,7 @@ class LazyFastRouter(APIRouter):
                     if head_renderer:
                         head_renderer()
 
-                session = context.get_session()
-                sse_url = url_join(
-                    session.current_path, self._loader_route_prefix, "sse"
-                )
+                sse_url = url_join(self._loader_route_prefix, "sse")
 
                 with tags.body(dataset={"sse": sse_url}):
                     tags.input(
