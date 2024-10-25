@@ -17,7 +17,7 @@ class Session:
         self._queue = asyncio.Queue()
         self._components: dict[int, Type["Component"]] = {}
         self._csrf_token = generate_csrf_token()
-        self._current_path = None
+        self._prefix_path = None
         self._reload_request = None
         self._buffer = deque(maxlen=buffer_size)
         self._cache = Cache()
@@ -44,8 +44,8 @@ class Session:
         return self._reload_request
 
     @property
-    def current_path(self) -> str | None:
-        return self._current_path
+    def prefix_path(self) -> str | None:
+        return self._prefix_path
     
     @property
     def cache(self) -> Cache:
@@ -54,8 +54,8 @@ class Session:
     def set_reload_request(self, request: ReloadRequest) -> None:
         self._reload_request = request
 
-    def set_current_path(self, path: str) -> None:
-        self._current_path = path
+    def set_prefix_path(self, path: str) -> None:
+        self._prefix_path = path
 
     def set_state(self, state: State) -> None:
         self._state = state

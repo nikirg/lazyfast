@@ -121,9 +121,10 @@ class LazyFastRouter(APIRouter):
                 state, buffer_size=self._sse_buffer_size
             )
 
-        session.set_current_path(
-            extract_pattern(request.url.path, self._loader_route_prefix)
+        session.set_prefix_path(
+            extract_pattern(request.url.path, self.prefix, self._loader_route_prefix)
         )
+
         request.state.session = session
         context.set_session(session)
 
@@ -238,7 +239,7 @@ class LazyFastRouter(APIRouter):
 
         """
 
-        def init_js_scripts(csrf_token: str | None = None):
+        def init_js_scripts(session: Session):
             with tags.html(lang=html_lang):
                 with tags.head():
                     tags.script(src=self._htmx_cdn)
@@ -247,13 +248,18 @@ class LazyFastRouter(APIRouter):
                     if head_renderer:
                         head_renderer()
 
-                sse_url = url_join(self._loader_route_prefix, "sse")
+                sse_url = url_join(
+                    session.prefix_path or "/",
+                    self._loader_route_prefix,
+                    "sse",
+                    path_params=None,
+                )
 
                 with tags.body(dataset={"sse": sse_url}):
                     tags.input(
                         id=self._csrf_input_id,
                         type_="hidden",
-                        value=csrf_token,
+                        value=session.csrf_token,
                         name="csrf",
                         onchange=None,
                     )
@@ -351,10 +357,9 @@ class LazyFastRouter(APIRouter):
             async def endpoint(*args, **kwargs):
                 context.clear_root_tags()
 
-                csrf_token = context.get_session().csrf_token
-
                 if template_renderer:
-                    template_renderer(csrf_token)
+                    session = context.get_session()
+                    template_renderer(session)
 
                 try:
                     if is_async:
@@ -375,7 +380,7 @@ class LazyFastRouter(APIRouter):
                 dependencies=dependencies,
                 response_class=HTMLResponse,
                 methods=["GET", "POST"],
-                include_in_schema=True,
+                include_in_schema=False,
             )
 
             return cls

@@ -1,11 +1,17 @@
 import os, re, base64, hashlib, hmac
 from typing import Callable
+
+import json
+import configparser
+import http.client
+import json
+
 from urllib.parse import urlencode
 
-import pkg_resources
 
-
-def url_join(*args, query_params: dict | None = None) -> str:
+def url_join(
+    *args, query_params: dict | None = None, path_params: dict | None = None
+) -> str:
     parts = []
 
     for arg in args:
@@ -16,6 +22,9 @@ def url_join(*args, query_params: dict | None = None) -> str:
     start_slash = "/" if args[0] and args[0].startswith("/") else ""
     end_slash = "/" if args[-1] and args[-1].endswith("/") else ""
     url = start_slash + "/".join(parts) + end_slash
+
+    if path_params:
+        url = url.format(**path_params)
 
     if query_params:
         url = f"{url}?{urlencode(query_params)}"
@@ -29,55 +38,53 @@ def generate_csrf_token() -> str:
     return token
 
 
-def extract_pattern(input_string: str, pattern: str) -> str | None:
-    escaped_pattern = re.escape(pattern)
-    escaped_pattern = re.sub(
-        r"\\\{([a-zA-Z_][a-zA-Z0-9_]*)\\\}", r"([^/]+)", escaped_pattern
-    )
-    match = re.match(f"^{escaped_pattern}", input_string)
+def extract_pattern(input_string: str, pattern: str, splitter: str) -> str | None:
+    string = input_string.split(splitter)[0]
 
-    if match:
+    regex_pattern = re.sub(r"([.^$+?()|\[\]\\])", r"\\\1", pattern)
+    regex_pattern = re.sub(r"\{[^}]+\}", r"([^/]+)", regex_pattern)
+    regex_pattern = "^" + regex_pattern
+
+    if match := re.match(regex_pattern, string):
         return match.group(0)
+
 
 def get_function_id(func: Callable) -> str:
     unique_string = f"{func.__name__}.{func.__module__}"
     return hashlib.md5(unique_string.encode()).hexdigest()
 
 
-# def check_version():
-#     package_name = "lazyfast"
-#     current_version = pkg_resources.get_distribution(package_name).version
+def check_library_version():
+    def print_in_frame(text: str):
+        text_length = len(text)
+        border = "+" + "-" * (text_length + 2) + "+"
+        print(border)
+        print(f"| {text} |")
+        print(border)
 
-#     def print_message_in_box(message: str):
-#         lines = message.split("\n")
-#         max_length = max(len(line) for line in lines)
-#         border = "+" + "-" * (max_length + 2) + "+"
+    config = configparser.ConfigParser()
+    config.read("pyproject.toml")
 
-#         print(border)
-#         for line in lines:
-#             print(f"| {line.ljust(max_length)} |")
-#         print(border)
+    name = config["tool.poetry"]["name"].strip('"')
+    current_version = config["tool.poetry"]["version"].strip('"')
 
-#     url = f"https://pypi.org/pypi/{package_name}/json"
-#     try:
-#         with urllib.request.urlopen(url) as response:
-#             data = response.read()
-#             pypi_data = json.loads(data.decode("utf-8"))
-#             latest_version = pypi_data["info"]["version"]
+    conn = http.client.HTTPSConnection("pypi.org")
+    conn.request("GET", f"/pypi/{name}/json")
+    response = conn.getresponse()
 
-#             if current_version != latest_version:
-#                 message = (
-#                     f"A new version of {package_name} is available: {latest_version}\n"
-#                     f"Your current version: {current_version}"
-#                 )
-#             else:
-#                 message = (
-#                     f"You have the latest version of {package_name}: {current_version}"
-#                 )
+    if response.status == 200:
+        data = json.loads(response.read())
+        pypi_version = data["info"]["version"]
+        github_repo = data["info"]["home_page"]
 
-#             print_message_in_box(message)
-#     except urllib.error.URLError:
-#         print_message_in_box("Failed to fetch the latest version from PyPI")
+        if pypi_version == current_version:
+            print_in_frame(
+                f"Welcome to {name} {current_version} | Version is up to date | {github_repo}"
+            )
+        else:
+            print_in_frame(
+                f"Welcome to {name} {current_version} | Update available: {pypi_version} | {github_repo}"
+            )
 
 
-# check_version()
+check_library_version()

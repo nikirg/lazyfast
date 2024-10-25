@@ -42,17 +42,15 @@ class TodoList(Component):
                         type_="submit",
                     )
 
-                    if submit_btn.trigger:
-                        async with state:
-                            if inp.value:
-                                task = Task(
-                                    id=len(state.tasks) + 1, description=inp.value
-                                )
-                                state.tasks.append(task)
-                            else:
-                                warning.content = "Task cannot be empty"
+        if submit_btn.trigger:
+            async with state:
+                if inp.value:
+                    task = Task(id=len(state.tasks) + 1, description=inp.value)
+                    state.tasks.append(task)
+                else:
+                    warning.content = "Task cannot be empty"
 
-                        inp.value = None
+            inp.value = None
 
         for task in sorted(state.tasks, key=lambda t: t.id, reverse=True):
             with tags.div(class_="box is-flex is-justify-content-space-between"):
@@ -64,10 +62,10 @@ class TodoList(Component):
 
                 del_btn = tags.button("x", id=f"del_{task.id}", class_="button")
 
-                if del_btn.trigger:
-                    async with state:
-                        state.delete_task_by_id(task.id)
-                        await self.reload()
+            if del_btn.trigger:
+                async with state:
+                    state.delete_task_by_id(task.id)
+                    await self.reload()
 
 
 # @tags.cache(max_age=10, invalidate_on=[State.name])

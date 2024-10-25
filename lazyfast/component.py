@@ -42,9 +42,9 @@ class Component(BaseModel):
 
         component_id = self.component_id
         container_id = self.container_id
-        
-        if session.current_path:
-            prefix = session.current_path.split(self._loader_route_prefix)[0]
+
+        if prefix_path := session.prefix_path:
+            prefix = prefix_path
         else:
             prefix = "/"
 
@@ -62,6 +62,6 @@ class Component(BaseModel):
             id=container_id,
         ) as container:
             if self._preload_renderer:
-                self._preload_renderer()
+                self._preload_renderer()  # type: ignore
 
         self._container = container
