@@ -75,16 +75,10 @@ def check_library_version():
     if response.status == 200:
         data = json.loads(response.read())
         pypi_version = data["info"]["version"]
-        github_repo = data["info"]["home_page"]
 
-        if pypi_version == current_version:
+        if pypi_version != current_version:
             print_in_frame(
-                f"Welcome to {name} {current_version} | Version is up to date | {github_repo}"
+                f"LazyFast | new version available: ({current_version} -> {pypi_version})."
             )
-        else:
-            print_in_frame(
-                f"Welcome to {name} {current_version} | Update available: {pypi_version} | {github_repo}"
-            )
-
 
 check_library_version()

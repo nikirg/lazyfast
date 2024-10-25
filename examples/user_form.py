@@ -44,13 +44,14 @@ class UserList(Component):
                 with tags.tr():
                     tags.th("ID")
                     tags.th("Name")
+                    tags.th("Group")
 
             with tags.tbody():
                 for user in users:
                     with tags.tr():
                         tags.td(user.id)
                         tags.td(user.name)
-
+                        tags.td(user.group)
 
 @router.component(id="Demo")
 class Demo(Component):
@@ -151,7 +152,7 @@ def head_renderer():
 
 @router.page("/", head_renderer=head_renderer)
 async def root():
-    with tags.div(class_="container mt-6"):
+    with tags.div(class_="container mt-6 px-3"):
         with tags.div(class_="grid"):
             with tags.div(class_="cell"):
                 with tags.div(class_="box"):

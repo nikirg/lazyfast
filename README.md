@@ -12,6 +12,12 @@
 
 **LazyFast** is a lightweight Python library for building modern, component-based web interfaces using FastAPI. It handles server-side logic in Python, with interactive elements like inputs and buttons triggering server-side component reloads for dynamic state updates.
 
+<p align="center">
+   <img src="img/todo_list.gif" alt="todo_list" width="49%" style="display:inline-block;">
+   <img src="img/live_search.gif" alt="live_search" width="49%" style="display:inline-block;">
+</p>
+
+
 **Ideal for Python developers who:**
 - Have basic HTML and CSS knowledge and want to build web interfaces without learning complex frontend frameworks like React, Angular, or Vue.
 
@@ -31,6 +37,10 @@
    - Dependencies: FastAPI for Python and HTMX for JavaScript (included via CDN).
 5. **State Management**
    - Use a state manager to trigger component reloads for a reactive user experience.
+
+<p align="center">
+   <img src="img/user_form.gif" alt="todo_list" width="60%" style="display:inline-block;">
+</p>
 
 ## Installation
 
