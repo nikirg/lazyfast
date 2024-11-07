@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from lazyfast import LazyFastRouter, tags, BaseState, Component
 
-GROUP_TYPE = Literal["internal", "external"]
+GROUP_TYPE = Literal["internal", "external", "none"]
 GROUPS: list[str] = ["internal", "external"]
 
 
@@ -15,7 +15,7 @@ class User(BaseModel):
 
 
 class State(BaseState):
-    group: GROUP_TYPE = "internal"
+    group: GROUP_TYPE = "none"
     users: list[User] = [
         User(id=1, name="John", group="external"),
         User(id=2, name="Alice", group="internal"),
@@ -30,6 +30,8 @@ class State(BaseState):
 
 
 async def get_user_by_group(state: State = Depends(State.load)) -> list[User]:
+    if state.group == "none":
+        return state.users
     return [user for user in state.users if user.group == state.group]
 
 
@@ -53,20 +55,9 @@ class UserList(Component):
                         tags.td(user.name)
                         tags.td(user.group)
 
-@router.component(id="Demo")
-class Demo(Component):
-    increment: int = 0
-
-    async def view(self):
-        self.increment += 1
-
-        tags.button(self.increment, class_="button")
-
 
 @router.component(id="UserFilter")
 class UserFilter(Component):
-    increment: int = 1
-
     async def view(self, state: State = Depends(State.load)) -> None:
         dataset = {"htmx-indicator-class": "is-loading"}
 
@@ -76,6 +67,9 @@ class UserFilter(Component):
             with tags.div(class_="control"):
                 with tags.div(class_="select", dataset=dataset):
                     with tags.select(id="group", name="group") as group_select:
+                        tags.option(
+                            "All", value="none", selected=group_select.value == "none"
+                        )
                         for group in GROUPS:
                             tags.option(
                                 group.capitalize(),
@@ -128,7 +122,6 @@ class UserForm(Component):
                 )
 
                 trigger = submit_btn.trigger
-                # tags.h1(trigger)
 
                 if trigger:
                     user = User(
@@ -162,7 +155,6 @@ async def root():
                 with tags.div(class_="box"):
                     UserFilter()
 
-            with tags.div(class_="cell"):
                 with tags.div(class_="box", style="transition: width 2s;"):
                     UserList()
 

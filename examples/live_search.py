@@ -1,5 +1,5 @@
-from fastapi import FastAPI
-from lazyfast import LazyFastRouter, tags, Component
+from fastapi import Depends, FastAPI
+from lazyfast import LazyFastRouter, tags, Component, BaseState
 
 
 def search_cities(q: str) -> list[str]:
@@ -24,12 +24,16 @@ def search_cities(q: str) -> list[str]:
     return [city for city in cities if q.lower() in city.lower()]
 
 
-router = LazyFastRouter()
+class State(BaseState):
+    matched_cities: list[str] | None = None
+
+
+router = LazyFastRouter(state_schema=State)
 
 
 @router.component()
 class LiveSearch(Component):
-    async def view(self):
+    async def view(self, state: State = Depends(State.load)):
         with tags.div(class_="box"):
             with tags.div(class_="field"):
                 tags.label("City Search", class_="label", for_="task")
@@ -43,14 +47,18 @@ class LiveSearch(Component):
                 )
 
         if inp.value:
-            cities = search_cities(inp.value)
+            async with state:
+                state.matched_cities = search_cities(inp.value)
 
-            if not cities:
-                tags.h2("No results found")
-            else:
-                for i, city in enumerate(cities):
-                    with tags.div(class_="box"):
-                        tags.h2(f"{i+1}. {city}")
+@router.component(id="search-results", reload_on=[State.matched_cities])
+class SearchResults(Component):
+    async def view(self, state: State = Depends(State.load)):
+        if mathed_cities := state.matched_cities:
+            for i, city in enumerate(mathed_cities):
+                with tags.div(class_="box"):
+                    tags.h2(f"{i+1}. {city}")
+        else:
+            tags.h2("No results found")
 
 
 def head_renderer():
@@ -65,6 +73,8 @@ def head_renderer():
 def root():
     with tags.div(class_="container mt-6 px-3"):
         LiveSearch()
+        with tags.div(class_="pt-3"):
+            SearchResults()
 
 
 app = FastAPI()

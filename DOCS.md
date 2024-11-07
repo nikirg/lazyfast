@@ -15,7 +15,6 @@
       - [`allow_unsafe_html`](#allow_unsafe_html)
     - [HTMX](#htmx)
     - [Dataset](#dataset)
-    - [Dynamic editing](#dynamic-editing)
   - [Nesting](#nesting)
   - [Custom tags](#custom-tags)
 - [Component](#component)
@@ -28,6 +27,7 @@
     - [Self reloading](#self-reloading)
     - [Indicators](#indicators)
     - [`ReloadRequest`](#reloadrequest)
+    - [Swapping method](#swapping-method)
     - [Container customization](#container-customization)
 - [State](#state)
   - [Define state](#define-state)
@@ -231,9 +231,6 @@ Is equivalent to:
 ```html
 <div data-custom-attribute="value" data-another-custom-attribute="another-value"></div>
 ```
-
-### Dynamic editing
-Coming soon...
 
 ## Nesting
 The LazyFast library lets you nest tags and components just like you would in HTML. This is achieved using Python's `with` statement.
@@ -444,10 +441,50 @@ class MyComponent(Component):
 - `method`: `GET` or `POST`
 - `trigger_id`: `None` or trigger tag id
 - `trigger_event`: `None` or trigger javascript event (e.g. `click`, `change`, or `input`)
-- `data`: `None` or request form data (values from all input tags within the component)
+- `data`: request form inputs. Is **deprecated**, use `inputs` instead
+- `inputs`: `None` or request form inputs (values from all input tags within the component)
 - `session_id`: current unique session id 
 
+You can use TypedDict for the `inputs` property:
+```python
+from typing import TypedDict
+
+class Inputs(TypedDict):
+    title: str
+    description: str
+
+@router.component()
+class MyComponent(Component):
+    def view(self, reload_request: ReloadReques[Inputs] = Depends(ReloadRequest)):
+        text = reload_request.inputs["title"]
+        description = reload_request.inputs["description"]
+
+        tags.input(type="text", name="title", value=title)
+        tags.input(name="description", value=description)
+```
+
+
 > Using a `ReloadRequest` allows you to separate the display from the logic, which is especially important in the context of large components.
+
+
+### Swapping method
+By default, the component replace old content with new content. We can change this behavior by using the `swapping_method` parameter:
+```python
+@router.component(swapping_method="append") # or "prepend"
+class MyComponent(Component):
+    async def view(self):
+        tags.div("LazyFast")
+        await self.reload()
+```
+Every reloading will append new content after the last component innerHTML child. For `prepend` method, it will prepend new content before the first component innerHTML child.
+This is a result of the triple reload:
+```html
+<div class="__componentLoaded__" hx-... >
+    <div>LazyFast</div>
+    <div>LazyFast</div>
+    <div>LazyFast</div>
+</div>
+```
 
 ### Container customization
 The component register decorator lets you customize the `div` container class and pass a `preload_renderer` function. This function will be called before the component is rendered, which is helpful for scenarios like rendering skeletons.

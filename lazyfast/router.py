@@ -1,7 +1,10 @@
-import os, inspect, asyncio
+import os
+import inspect
+import asyncio
 from typing import (
     Any,
     Callable,
+    Literal,
     ParamSpec,
     Sequence,
     Type,
@@ -16,7 +19,7 @@ from lazyfast import context, tags
 from lazyfast.component import Component
 from lazyfast.state import State, StateField
 from lazyfast.session import ReloadRequest, Session, SessionStorage
-from lazyfast.utils import url_join, extract_pattern
+from lazyfast.utils import str_hash, url_join, extract_pattern
 
 
 __all__ = ["LazyFastRouter"]
@@ -36,7 +39,7 @@ class LazyFastRouter(APIRouter):
     def __init__(
         self,
         state_schema: Type[State] | None = None,
-        session_cookie_key: str = "sid",
+        session_cookie_key: str | None = None,
         session_cookie_max_age: int = 60 * 60 * 24 * 7,
         session_delete_timeout: int = 10,
         htmx_cdn: str = "https://unpkg.com/htmx.org",
@@ -56,8 +59,8 @@ class LazyFastRouter(APIRouter):
         Args:
             state_schema (Type[State], optional): Schema for managing the state. Defaults to None.
                 Set this argument if you want to use the state manager and reload_on triggers.
-            session_cookie_key (str, optional): Key for the session cookie. Defaults to "sid".
-            session_cookie_max_age (int, optional): Maximum age of the session cookie in seconds. Defaults to one week (604800 seconds).
+            session_cookie_key (str, optional): Key for the session cookie. Defaults to hash of router prefix if prefix is set, otherwise "sid".
+            session_cookie_max_age (int, optional): Maximum age of the session cookie in seconds. Defaults to one week (604 800 seconds).
             session_delete_timeout (int, optional): Duration in seconds after a client disconnects,
                 beyond which the client's session is automatically terminated. Defaults to 10 seconds.
             htmx_cdn (str, optional): URL of the HTMX CDN. Defaults to "https://unpkg.com/htmx.org".
@@ -65,7 +68,8 @@ class LazyFastRouter(APIRouter):
             loader_route_prefix (str, optional): Prefix for the loader request route. Defaults to "/__lazyfast__".
             sse_endpoint_dependencies (Sequence[params.Depends], optional): Dependencies for the SSE endpoint. Defaults to None.
             sse_tick_interval (int, optional): Interval in seconds for the SSE event loop tick. Defaults to .5.
-            sse_buffer_size (int, optional): Maximum size of the SSE buffer. Defaults to 10. The buffer is needed to send events that were not received due to a connection break.
+            sse_buffer_size (int, optional): Maximum size of the SSE buffer. Defaults to 10.
+                The buffer is needed to send events that were not received due to a connection break.
             csrf_input_id (str, optional): ID of the CSRF input tag. Defaults to "csrf".
 
         Raises:
@@ -80,7 +84,6 @@ class LazyFastRouter(APIRouter):
         self._loader_class = loader_class
         self._loader_route_prefix = loader_route_prefix
         self._htmx_cdn = htmx_cdn
-        self._session_cookie_key = session_cookie_key
         self._session_cookie_max_age = session_cookie_max_age
         self._session_delete_timeout = session_delete_timeout
         self._sse_tick_interval = sse_tick_interval
@@ -99,6 +102,12 @@ class LazyFastRouter(APIRouter):
             fastapi_router_kwargs["dependencies"] = lazy_fast_deps
 
         super().__init__(**fastapi_router_kwargs)
+
+        self._session_cookie_key = (
+            session_cookie_key
+            if session_cookie_key
+            else (f"sid-{str_hash(self.prefix)}" if self.prefix else "sid")
+        )
 
         self._state_schema = state_schema
         self._register_sse_endpoint(sse_endpoint_dependencies)
@@ -254,8 +263,8 @@ class LazyFastRouter(APIRouter):
                     "sse",
                     path_params=None,
                 )
-
-                with tags.body(dataset={"sse": sse_url}):
+                dataset = {"sse": sse_url, "hx-ext": "morphdom-swap"}
+                with tags.body(dataset=dataset):
                     tags.input(
                         id=self._csrf_input_id,
                         type_="hidden",
@@ -289,6 +298,7 @@ class LazyFastRouter(APIRouter):
         template_renderer: Callable | None = None,
         preload_renderer: Callable | None = None,
         class_: str | None = None,
+        swapping_method: Literal["replace", "append", "prepend"] = "replace",
     ):
         """Register a component
 
@@ -304,7 +314,8 @@ class LazyFastRouter(APIRouter):
             template_renderer (Callable | None, optional): A function that render html tags extra to the component div
             preload_renderer (Callable | None, optional): A function that preloads the component content. For example skeletons
             class_ (str | None, optional): The class of the component div
-
+            swapping_method (Literal["replace", "append", "prepend"], optional): How old content will be replaced with new content
+            
         Returns:
             Callable: A decorator that registers the component
 
@@ -352,6 +363,7 @@ class LazyFastRouter(APIRouter):
             setattr(cls, "_preload_renderer", preload_renderer)
             setattr(cls, "_loader_route_prefix", self._loader_route_prefix)
             setattr(cls, "_csrf_input_id", self._csrf_input_id)
+            setattr(cls, "_swapping_method", swapping_method)
 
             @wraps(view_func)
             async def endpoint(*args, **kwargs):

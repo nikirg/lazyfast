@@ -1,4 +1,3 @@
-from typing import Callable
 from pydantic import BaseModel
 
 from lazyfast.htmx import HTMX
@@ -7,15 +6,22 @@ from lazyfast import context
 from lazyfast.utils import url_join
 
 
+SWAPPING_METHODS_MAP = {
+    "replace": "innerHTML",
+    "append": "beforeend",
+    "prepend": "afterbegin",
+}
+
 class Component(BaseModel):
     _container_id = None
     _url = None
     _class = None
     _id_prefix = "cid_"
     _loader_class = None
-    _preload_renderer: Callable | None = None
+    _preload_renderer = lambda: None
     _loader_route_prefix = None
     _csrf_input_id = None
+    _swapping_method = "replace"
 
     @property
     def component_id(self) -> str:
@@ -54,6 +60,7 @@ class Component(BaseModel):
             method="post",
             include=f"#{self._csrf_input_id}, #{container_id}",
             trigger=f"load, {container_id}",
+            swap=f"{SWAPPING_METHODS_MAP[self._swapping_method]} transition:true",
         )
 
         with tags.div(
@@ -62,6 +69,6 @@ class Component(BaseModel):
             id=container_id,
         ) as container:
             if self._preload_renderer:
-                self._preload_renderer()  # type: ignore
+                self._preload_renderer()
 
         self._container = container

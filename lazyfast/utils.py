@@ -1,10 +1,13 @@
-import os, re, base64, hashlib, hmac
+import os
+import re
+import hmac
+import json
+import base64
+import hashlib
 from typing import Callable
 
-import json
 import configparser
 import http.client
-import json
 
 from urllib.parse import urlencode
 
@@ -36,6 +39,10 @@ def generate_csrf_token() -> str:
     secret_key = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8")
     token = hmac.new(secret_key.encode(), os.urandom(32), hashlib.sha256).hexdigest()
     return token
+
+
+def str_hash(string: str) -> str:
+    return hashlib.md5(string.encode()).hexdigest()
 
 
 def extract_pattern(input_string: str, pattern: str, splitter: str) -> str | None:

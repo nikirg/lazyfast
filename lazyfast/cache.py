@@ -2,6 +2,7 @@ import functools
 import hashlib
 from lazyfast.state import StateField
 from lazyfast import context, tags
+from lazyfast.utils import str_hash
 
 
 class Cache:
@@ -22,9 +23,9 @@ def cache(invalidate_on: list[StateField] | None = None, max_age: int | None = N
         def wrapper(*args, **kwargs):
             #context.enable_caching()
 
-            cache_key = hashlib.md5(
+            cache_key = str_hash(
                 f"{func.__module__}.{func.__qualname__}:{args}:{kwargs}".encode(),
-            ).hexdigest()
+            )
 
             if session := context.get_session():
                 if content := session.cache.get(cache_key):
