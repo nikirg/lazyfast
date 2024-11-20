@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from copy import deepcopy
 from typing import Any, Self, dataclass_transform
 from fastapi import Request
 from pydantic import BaseModel, Field
@@ -33,10 +34,13 @@ class ModelMeta(ModelMetaclass):
 class State(BaseModel, metaclass=ModelMeta):
     _queue: asyncio.Queue | None = None
     _dump: dict[str, Any] = {}
+    _session: Any = None
 
     @staticmethod
     async def load(request: Request) -> Self:
-        return request.state.session.state
+        state = deepcopy(request.state.session.state)
+        state._session = request.state.session
+        return state
 
     def set_queue(self, queue: asyncio.Queue):
         self._queue = queue
@@ -66,12 +70,15 @@ class State(BaseModel, metaclass=ModelMeta):
                 for component_id in components:
                     await self.enqueue(component_id)
 
-    def open(self) -> None:
+    async def open(self) -> None:
+        await self._session.state_lock.acquire()
         self._dump = self.model_dump()
 
     async def commit(self) -> None:
+        self._session.set_state(self)
         changed_fields = self._compare_dicts(self._dump, self.model_dump())
         await self._reload_related_components(changed_fields)
+        self._session.state_lock.release()
 
     async def __aenter__(self) -> Self:
         self.open()

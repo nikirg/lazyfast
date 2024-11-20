@@ -1,5 +1,6 @@
+import uuid
+import asyncio
 from collections import deque
-import asyncio, uuid
 from typing import Generator, Type
 
 from lazyfast.cache import Cache
@@ -26,6 +27,7 @@ class Session:
             state.set_queue(self._queue)
 
         self._state = state
+        self._state_lock = asyncio.Lock()
 
     @property
     def csrf_token(self) -> str | None:
@@ -80,6 +82,10 @@ class Session:
 
     def get_component(self, component_id: str) -> Type["Component"]:
         return self._components[str(component_id)]
+    
+    @property
+    def session_lock(self) -> asyncio.Lock:
+        return self._state_lock
 
 
 class SessionStorage:
@@ -92,7 +98,7 @@ class SessionStorage:
 
     @classmethod
     async def create_session(
-        cls, state: Type[State] | None = None, buffer_size: int = 10
+        cls, state: State | None = None, buffer_size: int = 10
     ) -> Session:
         session_id = str(uuid.uuid4())
         session = Session(session_id, state, buffer_size=buffer_size)

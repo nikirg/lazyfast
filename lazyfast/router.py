@@ -273,6 +273,31 @@ class LazyFastRouter(APIRouter):
 
         return decorator
 
+    def register_component(
+        self,
+        component: Type["Component"],
+        id: str | None = None,
+        path: str | None = None,
+        prefix: str | None = None,
+        dependencies: Sequence[Depends] | None = None,
+        reload_on: list[StateField] | None = None,
+        template_renderer: Callable | None = None,
+        preload_renderer: Callable | None = None,
+        class_: str | None = None,
+        swapping_method: Literal["replace", "append", "prepend"] = "replace",
+    ) -> None:
+        self.component(
+            id=id,
+            path=path,
+            prefix=prefix,
+            dependencies=dependencies,
+            reload_on=reload_on,
+            template_renderer=template_renderer,
+            preload_renderer=preload_renderer,
+            class_=class_,
+            swapping_method=swapping_method,
+        )(component)
+
     def component(
         self,
         id: str | None = None,
@@ -298,6 +323,7 @@ class LazyFastRouter(APIRouter):
             template_renderer (Callable | None, optional): A function that render html tags extra to the component div
             preload_renderer (Callable | None, optional): A function that preloads the component content. For example skeletons
             class_ (str | None, optional): The class of the component div
+            swapping_method (Literal["replace", "append", "prepend"], optional): How old content will be replaced with new content
 
         Returns:
             Callable: A decorator that registers the component
@@ -346,6 +372,17 @@ class LazyFastRouter(APIRouter):
             setattr(cls, "_preload_renderer", preload_renderer)
             setattr(cls, "_loader_route_prefix", self._loader_route_prefix)
             setattr(cls, "_csrf_input_id", self._csrf_input_id)
+            setattr(cls, "_swapping_method", swapping_method)
+
+            # cls.configure(
+            #     container_id=id,
+            #     url=url,
+            #     class_=class_,
+            #     loader_class=self._loader_class,
+            #     preload_renderer=preload_renderer,
+            #     csrf_input_id=self._csrf_input_id,
+            #     swapping_method=swapping_method,
+            # )
 
             @wraps(view_func)
             async def endpoint(*args, **kwargs):

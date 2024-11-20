@@ -92,3 +92,13 @@ You can find examples in [examples](https://github.com/nikirg/lazyfast/tree/main
 ## License
 
 LazyFast is licensed under the [MIT License](https://github.com/nikirg/lazyfast/blob/main/LICENSE).
+
+
+## Roadmap
+1. Cache system for HTML tags
+2. Component templates with popular CSS frameworks (Bootstrap, Bulma, etc.)
+3. Advanced state management
+4. Closer integration with HTMX
+5. Distributed session storage (Redis)
+6. Session API
+7. ...

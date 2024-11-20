@@ -1,3 +1,4 @@
+from .utils import check_library_version
 from .router import LazyFastRouter
 from . import tags
 from .state import State as BaseState
@@ -11,3 +12,6 @@ __all__ = [
     "Component",
     "ReloadRequest",
 ]
+
+
+check_library_version()

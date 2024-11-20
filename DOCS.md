@@ -33,7 +33,6 @@
   - [Define state](#define-state)
   - [Load state](#load-state)
   - [Commit state](#commit-state)
-  - [Session API](#session-api)
 
 
 # Application router
@@ -521,24 +520,15 @@ class MyComponent(Component):
             state.my_field = 1
 
         # or
-        # directly `open` and `commit`
-        state.open()
-        state.my_field = 1
-        await state.commit()
-
-        # or
         # directly `open` and `commit` with try/finally
         try:
-            state.open()
+            await state.open()
             state.my_field = 1
         finally:
             await state.commit()
 ...
 ```
 After committing the state using any of the three methods, the component will reload with the updated state value.
->   
-> ⚠️ LazyFast currently lacks a concurrent commit system, so simultaneous state updates from multiple parts of the code within a session (i.e., within a single client) at high frequency may lead to unpredictable behavior. I'm actively working on addressing this issue.
-
-## Session API
-Coming soon...
+> ℹ️ **Transaction isolation**
+> Since version 0.1.33, the state commit system functions as a transaction with pessimistic locking and data snapshots, achieving **serializable isolation**. A data snapshot is created when the state is loaded as a dependency. When you use the state's context manager or call the `open` method, the state is locked to your session, preventing other transactions from accessing it. Earlier versions do not isolate transactions in any way.
 

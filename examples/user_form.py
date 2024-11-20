@@ -142,7 +142,7 @@ class UserForm(Component):
 
 def head_renderer():
     tags.meta(charset="UTF-8")
-    tags.title("Renderable demo")
+    tags.title("User Form")
     tags.link(
         rel="stylesheet",
         href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css",

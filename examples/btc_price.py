@@ -35,8 +35,6 @@ def head_renderer():
 
 @router.page("/", head_renderer=head_renderer)
 def root(background_tasks: BackgroundTasks, state: State = Depends(State.load)):
-
-
     with tags.div(class_="container mt-6"):
         Currency()
 

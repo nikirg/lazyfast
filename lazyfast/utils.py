@@ -1,5 +1,9 @@
 import os, re, base64, hashlib, hmac
 from typing import Callable
+
+import importlib.metadata
+import http.client
+
 from urllib.parse import urlencode
 
 import pkg_resources
@@ -44,40 +48,26 @@ def get_function_id(func: Callable) -> str:
     return hashlib.md5(unique_string.encode()).hexdigest()
 
 
-# def check_version():
-#     package_name = "lazyfast"
-#     current_version = pkg_resources.get_distribution(package_name).version
 
-#     def print_message_in_box(message: str):
-#         lines = message.split("\n")
-#         max_length = max(len(line) for line in lines)
-#         border = "+" + "-" * (max_length + 2) + "+"
+def check_library_version():
+    def print_in_frame(text: str):
+        text_length = len(text)
+        border = "+" + "-" * (text_length + 2) + "+"
+        print(border)
+        print(f"| {text} |")
+        print(border)
 
-#         print(border)
-#         for line in lines:
-#             print(f"| {line.ljust(max_length)} |")
-#         print(border)
+    name = "lazyfast"
+    current_version = importlib.metadata.version(name)
+    conn = http.client.HTTPSConnection("pypi.org")
+    conn.request("GET", f"/pypi/{name}/json")
+    response = conn.getresponse()
 
-#     url = f"https://pypi.org/pypi/{package_name}/json"
-#     try:
-#         with urllib.request.urlopen(url) as response:
-#             data = response.read()
-#             pypi_data = json.loads(data.decode("utf-8"))
-#             latest_version = pypi_data["info"]["version"]
+    if response.status == 200:
+        data = json.loads(response.read())
+        pypi_version = data["info"]["version"]
 
-#             if current_version != latest_version:
-#                 message = (
-#                     f"A new version of {package_name} is available: {latest_version}\n"
-#                     f"Your current version: {current_version}"
-#                 )
-#             else:
-#                 message = (
-#                     f"You have the latest version of {package_name}: {current_version}"
-#                 )
-
-#             print_message_in_box(message)
-#     except urllib.error.URLError:
-#         print_message_in_box("Failed to fetch the latest version from PyPI")
-
-
-# check_version()
+        if pypi_version != current_version:
+            print_in_frame(
+                f"{name} | new version available: ({current_version} -> {pypi_version})"
+            )

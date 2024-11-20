@@ -1,13 +1,39 @@
-from typing import Callable
+from typing import Callable, ClassVar, Literal, Sequence
+
+from dataclasses import dataclass
+from fastapi import Depends
 from pydantic import BaseModel
 
 from lazyfast.htmx import HTMX
 from lazyfast import tags
 from lazyfast import context
+from lazyfast.state import StateField
 from lazyfast.utils import url_join
 
 
+SWAPPING_METHODS_MAP = {
+    "replace": "innerHTML",
+    "append": "beforeend",
+    "prepend": "afterbegin",
+}
+
+
+@dataclass
+class ComponentConfig:
+    id: str | None = None
+    path: str | None = None
+    prefix: str | None = None
+    dependencies: Sequence[Depends] | None = None
+    reload_on: list[StateField] | None = None
+    template_renderer: Callable | None = None
+    preload_renderer: Callable | None = None
+    class_: str | None = None
+    swapping_method: Literal["replace", "append", "prepend"] = "replace"
+
+
 class Component(BaseModel):
+    component_config: ClassVar[ComponentConfig]
+
     _container_id = None
     _url = None
     _class = None
