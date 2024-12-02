@@ -12,7 +12,7 @@ exclude = ["examples", "site", "img", "dist"]
 [tool.poetry.dependencies]
 python = "^3.11"
 fastapi = "^0.115.2"
-python-multipart = "^0.0.12"
+python-multipart = ">=0.0.12,<0.0.19"
 asgiref = "^3.8.1"
 
 
