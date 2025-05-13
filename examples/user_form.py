@@ -2,7 +2,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
-from lazyfast import LazyFastRouter, tags, BaseState, Component
+from lazyfast_old import LazyFastRouter, tags, BaseState, Component
 
 GROUP_TYPE = Literal["internal", "external"]
 GROUPS: list[str] = ["internal", "external"]

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from lazyfast import LazyFastRouter, Component, tags
+from lazyfast_old import LazyFastRouter, Component, tags
 
 
 router = LazyFastRouter()

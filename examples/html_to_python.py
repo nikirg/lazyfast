@@ -1,8 +1,8 @@
 from bs4 import BeautifulSoup
 
 from fastapi import FastAPI
-from lazyfast.tags import ATTR_RENAME_MAP
-from lazyfast import LazyFastRouter, Component, tags
+from lazyfast_old.tags import ATTR_RENAME_MAP
+from lazyfast_old import LazyFastRouter, Component, tags
 
 inverted_attr_rename_map = {v: k for k, v in ATTR_RENAME_MAP.items()}
 

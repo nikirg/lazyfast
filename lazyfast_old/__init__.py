@@ -1,7 +1,7 @@
 from .utils import check_library_version
 from .router import LazyFastRouter
 from . import tags
-from .state import State as BaseState
+from .state.base import State as BaseState
 from .component import Component
 from .request import ReloadRequest
 

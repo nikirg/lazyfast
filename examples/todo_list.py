@@ -2,7 +2,7 @@ from datetime import datetime
 from fastapi import Depends, FastAPI, Request
 from pydantic import BaseModel
 
-from lazyfast import LazyFastRouter, BaseState, Component, ReloadRequest, tags
+from lazyfast_old import LazyFastRouter, BaseState, Component, ReloadRequest, tags
 
 
 class Task(BaseModel):

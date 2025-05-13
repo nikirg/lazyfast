@@ -1,4 +1,9 @@
-import os, re, base64, hashlib, hmac
+import os
+import re
+import hmac
+import json
+import base64
+import hashlib
 from typing import Callable
 
 import importlib.metadata
@@ -6,10 +11,8 @@ import http.client
 
 from urllib.parse import urlencode
 
-import pkg_resources
 
-
-def url_join(*args, query_params: dict | None = None) -> str:
+def url_join(*args: str, query_params: dict | None = None) -> str:
     parts = []
 
     for arg in args:
@@ -43,10 +46,10 @@ def extract_pattern(input_string: str, pattern: str) -> str | None:
     if match:
         return match.group(0)
 
+
 def get_function_id(func: Callable) -> str:
     unique_string = f"{func.__name__}.{func.__module__}"
     return hashlib.md5(unique_string.encode()).hexdigest()
-
 
 
 def check_library_version():

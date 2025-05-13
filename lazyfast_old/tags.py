@@ -1,15 +1,12 @@
 from abc import ABC
-import functools
 import html as html_utils
 from dataclasses import dataclass, field, fields
 from typing import Any, Literal, Type
 
-from lazyfast import context
-from lazyfast.htmx import HTMX
-from lazyfast.state import StateField
+from lazyfast_old import context
+from lazyfast_old.htmx import HTMX
 
 RELOAD_SCRIPT = "reloadComponent(this, event)"
-THROTTELED_RELOAD_SCRIPT = "throttledReloadComponent(this, event)"
 
 ATTR_RENAME_MAP = {
     "class_": "class",
@@ -85,13 +82,14 @@ __all__ = [
     "pre",
     "code",
     "raw",
+    "iframe",
 ]
 
 
 @dataclass(slots=True)
 class BaseHTML(ABC):
     content: str | None = None
-    allow_unsafe_html: bool = False
+    allow_unsafe_html: bool | None = False
 
     _self_closing: bool = field(default=False, init=False)
     _children: list[Type["Tag"]] = field(default_factory=list)
@@ -142,7 +140,7 @@ class BaseHTML(ABC):
         return attrs.strip()
 
     def _build_content(self) -> str:
-        return "".join([tag.html() for tag in self._children])
+        return "".join(tag.html() for tag in self._children)
 
     def html(self) -> str:
         attrs = self._get_attrs()
@@ -187,8 +185,7 @@ class BaseHTML(ABC):
 
 @dataclass(slots=True)
 class raw(BaseHTML):
-    allow_unsafe_html: bool = True
-
+    allow_unsafe_html: bool | None = True
 
 @dataclass(slots=True)
 class Tag(BaseHTML):
@@ -238,7 +235,7 @@ class Tag(BaseHTML):
     itemscope: bool | None = None
     itemtype: str | None = None
 
-    hx: Type[HTMX] | None = None
+    hx: HTMX | None = None
     reload_on: list[str] | None = None
     is_indicator: bool = False
 
@@ -281,16 +278,8 @@ class Tag(BaseHTML):
             for event in self.reload_on:
                 if not event.startswith("on"):
                     event = "on" + event
-
-                if event in (
-                    "oninput",
-                    "onkeydown",
-                    "onkeyup",
-                ):
-                    value = THROTTELED_RELOAD_SCRIPT
-                else:
-                    value = RELOAD_SCRIPT
-                setattr(self, event, value)
+                    
+                setattr(self, event, RELOAD_SCRIPT)
 
         if parent_tag := context.get_last_tag_from_stack():
             parent_tag.add_child(self)
@@ -612,7 +601,7 @@ class input(Tag):
     max: str | None = None
     step: str | None = None
 
-    onchange: str | None = THROTTELED_RELOAD_SCRIPT
+    onchange: str | None = RELOAD_SCRIPT
     oninput: str | None = None
 
     def __post_init__(self):
@@ -825,3 +814,7 @@ class pre(Tag):
 @dataclass(slots=True)
 class code(Tag):
     pass
+
+@dataclass(slots=True)
+class iframe(Tag):
+    src: str | None = None

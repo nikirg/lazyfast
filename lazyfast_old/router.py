@@ -1,7 +1,10 @@
-import os, inspect, asyncio
+import os
+import asyncio
+import inspect
 from typing import (
     Any,
     Callable,
+    Literal,
     ParamSpec,
     Sequence,
     Type,
@@ -12,11 +15,11 @@ from functools import wraps
 from fastapi import Depends, APIRouter, Request, Response, params
 from fastapi.responses import HTMLResponse, StreamingResponse
 
-from lazyfast import context, tags
-from lazyfast.component import Component
-from lazyfast.state import State, StateField
-from lazyfast.session import ReloadRequest, Session, SessionStorage
-from lazyfast.utils import url_join, extract_pattern
+from lazyfast_old import context, tags
+from lazyfast_old.component import Component
+from lazyfast_old.state.base import State, StateField
+from lazyfast_old.session import ReloadRequest, Session, SessionStorage
+from lazyfast_old.utils import url_join, extract_pattern
 
 
 __all__ = ["LazyFastRouter"]
@@ -43,7 +46,7 @@ class LazyFastRouter(APIRouter):
         loader_class: str = "__componentLoader__",
         loader_route_prefix: str = "/__lazyfast__",
         sse_endpoint_dependencies: Sequence[params.Depends] | None = None,
-        sse_tick_interval: int = 0.5,
+        sse_tick_interval: float = 0.5,
         sse_buffer_size: int = 10,
         csrf_input_id: str = "csrf",
         **fastapi_router_kwargs,
@@ -114,11 +117,11 @@ class LazyFastRouter(APIRouter):
             session = await SessionStorage.get_session(session_id)
             if not session:
                 session = await SessionStorage.create_session(
-                    state, buffer_size=self._sse_buffer_size
+                    buffer_size=self._sse_buffer_size
                 )
         else:
             session = await SessionStorage.create_session(
-                state, buffer_size=self._sse_buffer_size
+                buffer_size=self._sse_buffer_size
             )
 
         session.set_current_path(
@@ -206,7 +209,7 @@ class LazyFastRouter(APIRouter):
         def wrapper(*args, **kwargs):
             return method(*args, **kwargs)
 
-        wrapper.__signature__ = new_sig
+        wrapper.__signature__ = new_sig # type: ignore
         return wrapper
 
     def page(
@@ -306,8 +309,9 @@ class LazyFastRouter(APIRouter):
         dependencies: Sequence[Depends] | None = None,
         reload_on: list[StateField] | None = None,
         template_renderer: Callable | None = None,
-        preload_renderer: Callable | None = None,
+        preload_renderer: Callable[[None], None] | None = None,
         class_: str | None = None,
+        swapping_method: Literal["replace", "append", "prepend"] = "replace",
     ):
         """Register a component
 

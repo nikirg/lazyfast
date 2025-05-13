@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from lazyfast import LazyFastRouter, tags, Component
+from lazyfast_old import LazyFastRouter, tags, Component
 
 
 def search_cities(q: str) -> list[str]:

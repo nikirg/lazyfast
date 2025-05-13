@@ -1,23 +1,3 @@
-function throttle(func, wait = 1000) {
-  let timeout = null;
-  let lastArgs = null;
-
-  return function (...args) {
-    if (!timeout) {
-      func.apply(this, args);
-      timeout = setTimeout(() => {
-        timeout = null;
-        if (lastArgs) {
-          func.apply(this, lastArgs);
-          lastArgs = null;
-        }
-      }, wait);
-    } else {
-      lastArgs = args;
-    }
-  };
-}
-
 function reloadComponent(element, event) {
   const componentLoader = element.closest('.__componentLoader__');
   const indicatorElmClass = element.closest('[data-htmx-indicator-class]');
@@ -44,9 +24,6 @@ function preventFormSubmission(event) {
   event.preventDefault();
 }
 
-const throttledReloadComponent = throttle(reloadComponent);
-
-
 function saveInputData() {
   const inputs = document.querySelectorAll('input, textarea, select');
   inputs.forEach(input => {
@@ -69,11 +46,9 @@ function restoreInputDataForElement(element) {
   });
 }
 
-
 htmx.on('htmx:afterSettle', function (evt) {
   restoreInputDataForElement(evt.target);
 });
-
 
 window.onload = function () {
   let sse = document.body.dataset.sse;

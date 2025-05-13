@@ -4,7 +4,7 @@ import markdown
 from dataclasses import dataclass
 
 from fastapi import BackgroundTasks, FastAPI, Depends
-from lazyfast import LazyFastRouter, tags, BaseState, Component
+from lazyfast_old import LazyFastRouter, tags, BaseState, Component
 
 
 STYLE = """

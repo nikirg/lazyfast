@@ -1,6 +1,7 @@
-import asyncio, requests
+import asyncio
+import requests
 from fastapi import BackgroundTasks, Depends, FastAPI
-from lazyfast import LazyFastRouter, Component, tags, BaseState
+from lazyfast_old import LazyFastRouter, Component, tags, BaseState
 
 
 def get_btc_price() -> float:

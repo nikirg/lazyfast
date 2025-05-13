@@ -1,14 +1,14 @@
 from typing import Callable, ClassVar, Literal, Sequence
 
 from dataclasses import dataclass
-from fastapi import Depends
-from pydantic import BaseModel
+from fastapi import params
 
-from lazyfast.htmx import HTMX
-from lazyfast import tags
-from lazyfast import context
-from lazyfast.state import StateField
-from lazyfast.utils import url_join
+from lazyfast_old.dataclass import DataClass
+from lazyfast_old.htmx import HTMX
+from lazyfast_old import tags
+from lazyfast_old import context
+from lazyfast_old.state.base import StateField
+from lazyfast_old.utils import url_join
 
 
 SWAPPING_METHODS_MAP = {
@@ -23,7 +23,7 @@ class ComponentConfig:
     id: str | None = None
     path: str | None = None
     prefix: str | None = None
-    dependencies: Sequence[Depends] | None = None
+    dependencies: Sequence[params.Depends] | None = None
     reload_on: list[StateField] | None = None
     template_renderer: Callable | None = None
     preload_renderer: Callable | None = None
@@ -31,7 +31,7 @@ class ComponentConfig:
     swapping_method: Literal["replace", "append", "prepend"] = "replace"
 
 
-class Component(BaseModel):
+class Component(DataClass):
     component_config: ClassVar[ComponentConfig]
 
     _container_id = None
@@ -57,9 +57,6 @@ class Component(BaseModel):
     async def reload(self):
         session = context.get_session()
         await session.state.enqueue(self.container_id)
-
-    def set_path_params(self, **kwargs):
-        self._container.hx.set_path_params(**kwargs)
 
     def model_post_init(self, _):
         session = context.get_session()

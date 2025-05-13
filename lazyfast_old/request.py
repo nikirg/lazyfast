@@ -1,13 +1,21 @@
+import warnings
+from typing import Generic, Mapping, TypeVar
+
+from starlette.datastructures import UploadFile
 from fastapi import Depends, HTTPException, Request
 
+T = TypeVar("T")
 
-async def _load_form_data(request: Request) -> dict[str, str]:
+
+async def _load_form_data(request: Request) -> dict[str, UploadFile | str]:
     return dict(await request.form())
 
 
-class ReloadRequest:
+class ReloadRequest(Generic[T]):
     def __init__(
-        self, request: Request, inputs: dict[str, str] = Depends(_load_form_data)
+        self,
+        request: Request,
+        inputs: dict[str, UploadFile | str] = Depends(_load_form_data),
     ) -> None:
         self._method = request.method
         self._session_id = request.state.session.id
@@ -25,7 +33,7 @@ class ReloadRequest:
             del inputs["__tid__"]
         if self._trigger_event:
             del inputs["__evt__"]
-        self._data = inputs
+        self._inputs = inputs
 
         request.state.session.set_reload_request(self)
 
@@ -43,7 +51,14 @@ class ReloadRequest:
 
     @property
     def data(self) -> dict[str, str] | None:
-        return dict(self._data)
+        warnings.warn(
+            "`data` property is deprecated, use `inputs` instead", DeprecationWarning
+        )
+        return dict(self._inputs)
+
+    @property
+    def inputs(self) -> T | None:
+        return self._inputs
 
     @property
     def session_id(self) -> str:
