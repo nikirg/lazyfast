@@ -12,7 +12,7 @@ class TreeManager[T]:
         stack = self._storage.get() or deque()
         return list(stack)
 
-    def append_node(self, node: T) -> None:
+    def append_node(self, node: T):
         if stack := self._storage.get():
             stack.append(node)
             self._storage.set(stack)
@@ -21,15 +21,15 @@ class TreeManager[T]:
         if stack := self._storage.get():
             return stack[-1]
 
-    def update_last_node(self, node: T) -> None:
+    def update_last_node(self, node: T):
         if stack := self._storage.get():
             stack[-1] = node
             self._storage.set(stack)
 
-    def pop_last_node(self) -> None:
+    def pop_last_node(self):
         if stack := self._storage.get():
             stack.pop()
             self._storage.set(stack)
 
-    def clear_stack(self) -> None:
+    def clear_stack(self):
         self._storage.reset()

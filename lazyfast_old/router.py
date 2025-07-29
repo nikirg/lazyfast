@@ -54,21 +54,25 @@ class LazyFastRouter(APIRouter):
         """
         LazyFast Router
 
-        This class provides routing functionalities for your web application, integrating state management, session handling, and HTMX support.
+        This class provides routing functionalities for your web application, 
+            integrating state management, session handling, and HTMX support.
 
         Args:
             state_schema (Type[State], optional): Schema for managing the state. Defaults to None.
                 Set this argument if you want to use the state manager and reload_on triggers.
             session_cookie_key (str, optional): Key for the session cookie. Defaults to "sid".
-            session_cookie_max_age (int, optional): Maximum age of the session cookie in seconds. Defaults to one week (604800 seconds).
+            session_cookie_max_age (int, optional): Maximum age of the session cookie in seconds. 
+                Defaults to one week (604800 seconds).
             session_delete_timeout (int, optional): Duration in seconds after a client disconnects,
                 beyond which the client's session is automatically terminated. Defaults to 10 seconds.
             htmx_cdn (str, optional): URL of the HTMX CDN. Defaults to "https://unpkg.com/htmx.org".
             loader_class (str, optional): CSS class for the component HTMX loader div. Defaults to "__componentLoader__".
             loader_route_prefix (str, optional): Prefix for the loader request route. Defaults to "/__lazyfast__".
-            sse_endpoint_dependencies (Sequence[params.Depends], optional): Dependencies for the SSE endpoint. Defaults to None.
+            sse_endpoint_dependencies (Sequence[params.Depends], optional): Dependencies for the SSE endpoint. 
+                Defaults to None.
             sse_tick_interval (int, optional): Interval in seconds for the SSE event loop tick. Defaults to .5.
-            sse_buffer_size (int, optional): Maximum size of the SSE buffer. Defaults to 10. The buffer is needed to send events that were not received due to a connection break.
+            sse_buffer_size (int, optional): Maximum size of the SSE buffer. Defaults to 10. 
+                The buffer is needed to send events that were not received due to a connection break.
             csrf_input_id (str, optional): ID of the CSRF input tag. Defaults to "csrf".
 
         Raises:
