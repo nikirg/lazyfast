@@ -54,8 +54,45 @@ function restoreInputDataForElement(element) {
   });
 }
 
+let _focusedId = null, _focusedName = null, _focusCursor = null;
+
+htmx.on('htmx:beforeSwap', function (_evt) {
+  const el = document.activeElement;
+  if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+    _focusedId = el.id || null;
+    _focusedName = el.name || null;
+    _focusCursor = (el.selectionEnd != null) ? el.selectionEnd : null;
+  } else {
+    _focusedId = null;
+    _focusedName = null;
+    _focusCursor = null;
+  }
+});
+
 htmx.on('htmx:afterSettle', function (evt) {
   restoreInputDataForElement(evt.target);
+
+  if (_focusedId || _focusedName) {
+    const selector = _focusedId
+      ? `#${CSS.escape(_focusedId)}`
+      : `[name="${CSS.escape(_focusedName)}"]`;
+    const el = evt.target.querySelector(selector) || document.querySelector(selector);
+    if (el) {
+      el.focus();
+      if (_focusCursor != null && el.setSelectionRange) {
+        try { el.setSelectionRange(_focusCursor, _focusCursor); } catch (_) {}
+      }
+    }
+    _focusedId = null;
+    _focusedName = null;
+    _focusCursor = null;
+  }
+});
+
+htmx.on('htmx:responseError', function (evt) {
+  if (evt.detail.xhr.status === 403) {
+    document.location.reload();
+  }
 });
 
 window.onload = function () {

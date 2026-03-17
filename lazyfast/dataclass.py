@@ -4,7 +4,12 @@ from typing import Any, dataclass_transform
 class Serializable:
     def __init__(self, **kwargs: Any):
         for field in self.fields:
-            setattr(self, field, kwargs.get(field))
+            if field in kwargs:
+                value = kwargs[field]
+            else:
+                # Fall back to the class-level default (e.g. count: int = 0)
+                value = getattr(type(self), field, None)
+            setattr(self, field, value)
 
     @property
     def fields(self) -> dict[str, Any]:
