@@ -14,8 +14,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 example/
 ├── showcase.py        ← all examples in one app
+|── shared.py          ← common nav & helpers
 └── apps/
-    ├── shared.py      ← common nav & helpers
     ├── todo.py
     ├── btc.py
     ├── search.py

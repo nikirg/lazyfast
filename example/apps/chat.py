@@ -12,7 +12,7 @@ from typing import Literal
 from fastapi import BackgroundTasks, Depends, FastAPI
 
 from lazyfast import LazyFastRouter, BaseState, Component, tags
-from example.apps.shared import common_head, render_nav
+from example.shared import common_head, render_nav
 
 
 CHAT_STYLE = """

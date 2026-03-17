@@ -10,7 +10,7 @@ Run:
 from fastapi import FastAPI
 
 from lazyfast import LazyFastRouter, tags
-from example.apps.shared import BULMA, EXAMPLES
+from example.shared import BULMA, EXAMPLES
 
 from example.apps.todo import router as todo_router
 from example.apps.btc import router as btc_router

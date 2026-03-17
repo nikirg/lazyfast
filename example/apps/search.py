@@ -9,7 +9,7 @@ Standalone:
 from fastapi import FastAPI
 
 from lazyfast import LazyFastRouter, Component, tags
-from example.apps.shared import common_head, render_nav
+from example.shared import common_head, render_nav
 
 
 CITIES = [

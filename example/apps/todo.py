@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from fastapi import Depends, FastAPI
 
 from lazyfast import LazyFastRouter, BaseState, Component, tags
-from example.apps.shared import common_head, render_nav
+from example.shared import common_head, render_nav
 
 
 class Task(BaseModel):

@@ -12,7 +12,7 @@ from fastapi import FastAPI
 
 from lazyfast import LazyFastRouter, Component, tags
 from lazyfast.tags import ATTR_RENAME_MAP
-from example.apps.shared import common_head, render_nav
+from example.shared import common_head, render_nav
 
 
 _INVERTED_ATTR_MAP = {v: k for k, v in ATTR_RENAME_MAP.items()}
