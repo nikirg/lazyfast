@@ -1,6 +1,4 @@
-import inspect
-from functools import lru_cache
-from typing import Any, ClassVar, dataclass_transform
+from typing import Any, dataclass_transform
 
 
 class Serializable:
@@ -9,16 +7,8 @@ class Serializable:
             setattr(self, field, kwargs.get(field))
 
     @property
-    @lru_cache(maxsize=None)
     def fields(self) -> dict[str, Any]:
-        parent_annotations = {
-            field: type_
-            for base in inspect.getmro(self.__class__)
-            if hasattr(base, "__annotations__")
-            for field, type_ in base.__annotations__.items()
-            if getattr(type_, "__origin__", None) is not ClassVar
-        }
-        return parent_annotations | self.__class__.__annotations__
+        return type(self).__annotations__
 
     def to_dict(self, exclude: set[str] | None = None) -> dict[str, Any]:
         return {

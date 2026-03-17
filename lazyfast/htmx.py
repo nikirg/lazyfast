@@ -34,7 +34,7 @@ class HTMX:
         self._method = method
         self._trigger = trigger
         self._target = target
-        self._swap = swap
+        self._swap = swap + " transition:true" if swap else None
         self._select = select
         self._vals = vals
         self._include = include

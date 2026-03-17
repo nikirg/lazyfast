@@ -10,7 +10,7 @@ class Cache:
 
     def get(self, key: str) -> str | None:
         return self._cache.get(key)
-    
+
     def set(self, key: str, value: str):
         self._cache[key] = value
 
@@ -29,10 +29,10 @@ class Cache:
 #             if session := context.get_session():
 #                 if content := session.cache.get(cache_key):
 #                     tags.raw(content)
-#                     return 
+#                     return
 
 #                 func(*args, **kwargs)
-            
+
 #         return wrapper
 
 #     return decorator

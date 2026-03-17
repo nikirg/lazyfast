@@ -1,3 +1,9 @@
+const __PAGE_KEY__ = window.location.pathname;
+
+function __storageKey__(name) {
+  return __PAGE_KEY__ + ':' + name;
+}
+
 function reloadComponent(element, event) {
   const componentLoader = element.closest('.__componentLoader__');
   const indicatorElmClass = element.closest('[data-htmx-indicator-class]');
@@ -11,7 +17,8 @@ function reloadComponent(element, event) {
 
   if (indicatorElmContent) {
     if (indicatorElmContent.dataset.htmxIndicatorContent) {
-      indicatorElmContent.innerHTML = indicatorElmContent.dataset.htmxIndicatorContent;
+      // Use textContent to avoid XSS — indicator content is treated as plain text
+      indicatorElmContent.textContent = indicatorElmContent.dataset.htmxIndicatorContent;
     }
   }
 
@@ -28,7 +35,7 @@ function saveInputData() {
   const inputs = document.querySelectorAll('input, textarea, select');
   inputs.forEach(input => {
     if (input.type !== 'hidden') {
-      localStorage.setItem(input.name || input.id, input.value);
+      localStorage.setItem(__storageKey__(input.name || input.id), input.value);
     }
   });
 }
@@ -37,10 +44,11 @@ function restoreInputDataForElement(element) {
   const inputs = element.querySelectorAll('input, textarea, select');
   inputs.forEach(input => {
     if (input.type !== 'hidden') {
-      const savedValue = localStorage.getItem(input.name || input.id);
+      const key = __storageKey__(input.name || input.id);
+      const savedValue = localStorage.getItem(key);
       if (savedValue) {
         input.value = savedValue;
-        localStorage.removeItem(input.name || input.id);
+        localStorage.removeItem(key);
       }
     }
   });
@@ -57,7 +65,8 @@ window.onload = function () {
     return;
   }
 
-  const lastEvent = localStorage.getItem("sse_last_event");
+  const lastEventKey = __storageKey__('sse_last_event');
+  const lastEvent = localStorage.getItem(lastEventKey);
 
   if (lastEvent) {
     sse = `${sse}?last_event=${lastEvent}`;
@@ -66,8 +75,15 @@ window.onload = function () {
   const sseSource = new EventSource(sse);
 
   sseSource.onmessage = function (event) {
+    // Server sends __reload__ when the event buffer has rolled over
+    if (event.data === '__reload__') {
+      localStorage.removeItem(lastEventKey);
+      document.location.reload();
+      return;
+    }
+
     const target = document.getElementById(event.data);
-    localStorage.setItem("sse_last_event", event.data);
+    localStorage.setItem(lastEventKey, event.data);
     if (target) {
       reloadComponent(target);
     }

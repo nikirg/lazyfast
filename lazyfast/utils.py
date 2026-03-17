@@ -6,8 +6,10 @@ import base64
 import hashlib
 from typing import Callable
 
+import tomllib
 import importlib.metadata
 import http.client
+from pathlib import Path
 
 from urllib.parse import urlencode
 
@@ -48,8 +50,9 @@ def extract_pattern(input_string: str, pattern: str) -> str | None:
 
 
 def get_function_id(func: Callable) -> str:
-    unique_string = f"{func.__name__}.{func.__module__}"
-    return hashlib.md5(unique_string.encode()).hexdigest()
+    name = getattr(func, "__name__", str(id(func)))
+    module = getattr(func, "__module__", "")
+    return hashlib.md5(f"{name}.{module}".encode()).hexdigest()
 
 
 def check_library_version():
@@ -61,16 +64,28 @@ def check_library_version():
         print(border)
 
     name = "lazyfast"
-    current_version = importlib.metadata.version(name)
-    conn = http.client.HTTPSConnection("pypi.org")
-    conn.request("GET", f"/pypi/{name}/json")
-    response = conn.getresponse()
+    try:
+        current_version = importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        pyproject = Path(__file__).parent.parent / "pyproject.toml"
+        with open(pyproject, "rb") as f:
+            current_version = tomllib.load(f)["project"]["version"]
+
+    try:
+        conn = http.client.HTTPSConnection("pypi.org", timeout=3)
+        conn.request("GET", f"/pypi/{name}/json")
+        response = conn.getresponse()
+    except Exception:
+        return
 
     if response.status == 200:
         data = json.loads(response.read())
         pypi_version = data["info"]["version"]
 
-        if pypi_version != current_version:
+        def parse_version(v: str) -> tuple:
+            return tuple(int(x) for x in v.split("."))
+
+        if parse_version(pypi_version) > parse_version(current_version):
             print_in_frame(
                 f"{name} | new version available: ({current_version} -> {pypi_version})"
             )

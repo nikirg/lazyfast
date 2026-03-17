@@ -1,10 +1,12 @@
 from abc import ABC
 import html as html_utils
 from dataclasses import dataclass, field, fields
-from typing import Any, Literal, Type
+from typing import Any, Literal
 
-from lazyfast_old import context
-from lazyfast_old.htmx import HTMX
+from starlette.datastructures import UploadFile
+
+from lazyfast import context
+from lazyfast.htmx import HTMX
 
 RELOAD_SCRIPT = "reloadComponent(this, event)"
 
@@ -92,17 +94,17 @@ class BaseHTML(ABC):
     allow_unsafe_html: bool | None = False
 
     _self_closing: bool = field(default=False, init=False)
-    _children: list[Type["Tag"]] = field(default_factory=list)
+    _children: list["BaseHTML"] = field(default_factory=list)
 
     @property
     def tag_name(self) -> str:
         return self.__class__.__name__.lower()
 
     @property
-    def children(self) -> list[Type["Tag"]]:
+    def children(self) -> list["BaseHTML"]:
         return self._children
 
-    def add_child(self, tag: Type["Tag"]):
+    def add_child(self, tag: "BaseHTML") -> None:
         self._children.append(tag)
 
     def clear_children(self):
@@ -187,6 +189,7 @@ class BaseHTML(ABC):
 class raw(BaseHTML):
     allow_unsafe_html: bool | None = True
 
+
 @dataclass(slots=True)
 class Tag(BaseHTML):
     id: str | None = None
@@ -207,8 +210,6 @@ class Tag(BaseHTML):
     tabindex: int | None = None
     translate: Literal["yes", "no"] | None = None
     aria_labelledby: str | None = None
-    aria_expand: str | None = None
-    aria_controls: str | None = None
     popovertarget: str | None = None
     popover: bool | None = None
     popovertargetaction: Literal["hide", "show"] | None = None
@@ -258,10 +259,13 @@ class Tag(BaseHTML):
             raise ValueError("Trigger checking requires tag id")
 
         session = context.get_session()
+        reload_req = session.reload_request
+        if reload_req is None:
+            return None
 
-        if tid := session.reload_request.trigger_id:
+        if tid := reload_req.trigger_id:
             if tid == self.id:
-                return session.reload_request.trigger_event
+                return reload_req.trigger_event
 
     def _reset_events(self):
         for tag_field in fields(self):
@@ -270,7 +274,9 @@ class Tag(BaseHTML):
 
     def __post_init__(self):
         if self.is_indicator:
-            self.class_ += " htmx-indicator"
+            self.class_ = (
+                f"{self.class_} htmx-indicator" if self.class_ else "htmx-indicator"
+            )
 
         if self.reload_on:
             self._reset_events()
@@ -278,7 +284,7 @@ class Tag(BaseHTML):
             for event in self.reload_on:
                 if not event.startswith("on"):
                     event = "on" + event
-                    
+
                 setattr(self, event, RELOAD_SCRIPT)
 
         if parent_tag := context.get_last_tag_from_stack():
@@ -290,7 +296,8 @@ class Tag(BaseHTML):
 
         for tag in context.get_all_tags_from_stack():
             if tag.tag_name == "form" and self.tag_name != "button":
-                self._reset_events()
+                if not self.reload_on:
+                    self._reset_events()
                 break
 
 
@@ -438,16 +445,6 @@ class td(Tag):
     headers: str | None = None
 
 
-_referrerpolicy = Literal[
-    "no-referrer",
-    "no-referrer-when-downgrade",
-    "same-origin",
-    "origin",
-    "origin-when-cross-origin",
-    "unsafe-url",
-]
-
-
 @dataclass(slots=True)
 class script(Tag):
     src: str | None = None
@@ -456,10 +453,8 @@ class script(Tag):
     defer: bool | None = None
     integrity: str | None = None
     nonce: str | None = None
-    referrerpolicy: _referrerpolicy | None = None  # type: ignore
+    referrerpolicy: _referrerpolicy | None = None
     crossorigin: Literal["anonymous", "use-credentials"] | None = None
-    integrity: str | None = None
-    referrerpolicy: _referrerpolicy | None = None  # type: ignore
 
     allow_unsafe_html: bool | None = True
 
@@ -479,7 +474,7 @@ class link(Tag):
     type: str | None = None
     crossorigin: Literal["anonymous", "use-credentials"] | None = None
     integrity: str | None = None
-    referrerpolicy: _referrerpolicy | None = None  # type: ignore
+    referrerpolicy: _referrerpolicy | None = None
 
 
 @dataclass(slots=True)
@@ -609,14 +604,26 @@ class input(Tag):
             raise ValueError("Name attribute is required if value is set")
 
         session = context.get_session()
-        inputs = session.reload_request.data
-
-        self.value = inputs.get(self.name, self.value)
+        if self.name is not None and (reload_req := session.reload_request) is not None:
+            raw = reload_req.inputs.get(self.name)
+            if isinstance(raw, str):
+                self.value = raw
 
         if self.type_ == "checkbox":
             self.checked = bool(self.value)
 
         super(input, self).__post_init__()
+
+    @property
+    def file(self) -> UploadFile | None:
+        if self.name is None:
+            return None
+        session = context.get_session()
+        reload_req = session.reload_request
+        if reload_req is None:
+            return None
+        raw = reload_req.inputs.get(self.name)
+        return raw if isinstance(raw, UploadFile) else None
 
 
 @dataclass(slots=True)
@@ -660,8 +667,11 @@ class select(Tag):
         if not self.name:
             raise ValueError("Name attribute is required for getting value")
         session = context.get_session()
-        inputs = session.reload_request.data
-        return inputs.get(self.name)
+        reload_req = session.reload_request
+        if reload_req is None:
+            return None
+        raw = reload_req.inputs.get(self.name)
+        return raw if isinstance(raw, str) else None
 
 
 @dataclass(slots=True)
@@ -682,8 +692,10 @@ class textarea(Tag):
 
     def __post_init__(self):
         session = context.get_session()
-        inputs = session.reload_request.data
-        self.content = inputs.get(self.name, self.content)
+        if self.name is not None and (reload_req := session.reload_request) is not None:
+            raw = reload_req.inputs.get(self.name)
+            if isinstance(raw, str):
+                self.content = raw
         super(textarea, self).__post_init__()
 
 
@@ -814,6 +826,7 @@ class pre(Tag):
 @dataclass(slots=True)
 class code(Tag):
     pass
+
 
 @dataclass(slots=True)
 class iframe(Tag):
